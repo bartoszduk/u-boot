@@ -59,3 +59,4 @@ obj-$(CONFIG_MSM_GPIO)		+= msm_gpio.o
 obj-$(CONFIG_$(SPL_)PCF8575_GPIO)	+= pcf8575_gpio.o
 obj-$(CONFIG_PM8916_GPIO)	+= pm8916_gpio.o
 obj-$(CONFIG_INTEL_XWAY_GPIO)	+= intel_xway_gpio.o
+obj-$(CONFIG_INTEL_XWAY_STP)	+= intel_xway_stp.o

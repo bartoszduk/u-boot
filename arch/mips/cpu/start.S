@@ -265,6 +265,12 @@ wr_done:
 	setup_stack_gd
 #endif
 
+#ifdef CONFIG_DEBUG_UART
+	PTR_LA	t9, debug_uart_init
+	jalr	t9
+	 nop
+#endif
+
 	move	a0, zero		# a0 <-- boot_flags = 0
 	PTR_LA	t9, board_init_f
 

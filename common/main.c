@@ -273,6 +273,8 @@ static __inline__ int abortboot(int bootdelay)
 
 void main_loop (void)
 {
+	int ret;
+
 #ifndef CONFIG_SYS_HUSH_PARSER
 	static char lastcommand[CONFIG_SYS_CBSIZE] = { 0, };
 	int len;
@@ -403,11 +405,21 @@ void main_loop (void)
 # endif
 
 # ifndef CONFIG_SYS_HUSH_PARSER
-		run_command (s, 0);
+		ret = run_command (s, 0);
 # else
-		parse_string_outer(s, FLAG_PARSE_SEMICOLON |
+		ret = parse_string_outer(s, FLAG_PARSE_SEMICOLON |
 				    FLAG_EXIT_FROM_LOOP);
 # endif
+
+# ifdef CONFIG_CMD_HTTPD
+		if (ret != 0) {
+			printf("Failed to execute bootcmd "
+					"(maybe invalid u-boot environment?), "
+					"starting httpd to update firmware...\n");
+			NetLoopHttpd();
+		}
+# endif
+
 
 # ifdef CONFIG_AUTOBOOT_KEYED
 		disable_ctrlc(prev);	/* restore Control C checking */

@@ -114,4 +114,7 @@
 
 #define CONFIG_CMD_HTTPD		/* enable upgrade via HTTPD */
 
+#define CONFIG_IPADDR		192.168.0.119
+#define CONFIG_ETHADDR		00:01:02:03:04:05
+
 #endif	/* __CONFIG_H */

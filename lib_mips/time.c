@@ -29,6 +29,8 @@ static unsigned long timestamp;
 /* how many counter cycles in a jiffy */
 #define CYCLES_PER_JIFFY	(CONFIG_SYS_MIPS_TIMER_FREQ + CONFIG_SYS_HZ / 2) / CONFIG_SYS_HZ
 
+unsigned long ifx_get_cpuclk(void);
+
 /*
  * timer without interrupts
  */

@@ -397,7 +397,7 @@ int do_http_upgrade(const unsigned char *data, const ulong size)
 	}
 	/* write the image to the flash */
 	puts("http ugrade ...\n");
-	sprintf(buf, "era ${kernel_addr} +0x%x; cp.b ${ram_addr} ${kernel_addr} 0x%x", size, size);
+	sprintf(buf, "era ${kernel_addr} +0x%lx; cp.b ${ram_addr} ${kernel_addr} 0x%lx", size, size);
 	return run_command(buf, 0);
 }
 

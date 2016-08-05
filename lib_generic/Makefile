@@ -24,6 +24,9 @@
 include $(TOPDIR)/config.mk
 
 LIB	= $(obj)libgeneric.a
+BOOTSTRAP_LIB	= $(obj)libgeneric_bootstrap.a
+
+BOOTSTRAP_LIB-$(CONFIG_BOOTSTRAP)	= $(BOOTSTRAP_LIB)
 
 COBJS-$(CONFIG_ADDR_MAP) += addr_map.o
 COBJS-$(CONFIG_BZIP2) += bzlib.o
@@ -50,13 +53,36 @@ COBJS-y += time.o
 COBJS-y += vsprintf.o
 COBJS-$(CONFIG_ZLIB) += zlib.o
 COBJS-$(CONFIG_RBTREE)	+= rbtree.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP) += string.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP) += vsprintf.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP) += div64.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP) += ctype.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP) += time.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP) += bootstrap.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_GZIP) += zlib.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_GZIP) += gunzip.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_GZIP) += crc32.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_BZIP2) += bzlib.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_BZIP2) += bzlib_crctable.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_BZIP2) += bzlib_decompress.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_BZIP2) += bzlib_randtable.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_BZIP2) += bzlib_huffman.o
+
+BOOTSTRAP_COBJS	:= $(BOOTSTRAP_COBJS-y)
+BOOTSTRAP_OBJS	:= $(addprefix $(obj),$(BOOTSTRAP_COBJS))
 
 COBJS	:= $(COBJS-y)
-SRCS	:= $(COBJS:.o=.c)
+SRCS	:= $(COBJS:.o=.c) $(BOOTSTRAP_COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
+
+all: $(obj).depend $(LIB) $(BOOTSTRAP_LIB-y)
 
 $(LIB):	$(obj).depend $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+$(BOOTSTRAP_LIB):	$(obj).depend $(BOOTSTRAP_OBJS)
+	$(AR) $(ARFLAGS) $@ $(BOOTSTRAP_OBJS)
+
 
 #########################################################################
 

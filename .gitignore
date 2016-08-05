@@ -23,6 +23,11 @@
 /u-boot.hex
 /u-boot.map
 /u-boot.bin
+/u-boot.bin.bz2
+/u-boot.bin.gz
+/u-boot.bin.lzma
+/u-boot.bin.lzo
+/u-boot.dis
 /u-boot.srec
 /u-boot.ldr
 /u-boot.ldr.hex
@@ -30,6 +35,20 @@
 /u-boot.lds
 /u-boot-onenand.bin
 /u-boot-flexonenand.bin
+/u-boot-bootstrap
+/u-boot-bootstrap.hex
+/u-boot-bootstrap.map
+/u-boot-bootstrap.bin
+/u-boot-bootstrap.bin.bz2
+/u-boot-bootstrap.bin.gz
+/u-boot-bootstrap.bin.lzma
+/u-boot-bootstrap.bin.lzo
+/u-boot-bootstrap.dis
+/u-boot-bootstrap.srec
+/u-boot-bootstrap.ldr
+/u-boot-bootstrap.ldr.hex
+/u-boot-bootstrap.ldr.srec
+/u-boot-bootstrap.lds
 
 #
 # Generated files
@@ -38,6 +57,7 @@
 *.depend
 /LOG
 /errlog
+/.payload.s
 /reloc_off
 
 # stgit generated dirs
@@ -63,3 +83,6 @@ cscope.*
 /onenand_ipl/onenand-ipl*
 /onenand_ipl/board/*/onenand*
 /onenand_ipl/board/*/*.S
+examples/standalone/
+
+setvars

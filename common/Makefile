@@ -24,6 +24,9 @@
 include $(TOPDIR)/config.mk
 
 LIB	= $(obj)libcommon.a
+BOOTSTRAP_LIB	= $(obj)libcommon_bootstrap.a
+
+BOOTSTRAP_LIB-$(CONFIG_BOOTSTRAP)	= $(BOOTSTRAP_LIB)
 
 AOBJS	=
 
@@ -168,17 +171,26 @@ COBJS-$(CONFIG_MODEM_SUPPORT) += modem.o
 COBJS-$(CONFIG_UPDATE_TFTP) += update.o
 COBJS-$(CONFIG_USB_KEYBOARD) += usb_kbd.o
 
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP) += dlmalloc.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_SERIAL) += console_bootstrap.o
+
+BOOTSTRAP_COBJS	:= $(sort $(BOOTSTRAP_COBJS-y))
+BOOTSTRAP_OBJS	:= $(addprefix $(obj),$(BOOTSTRAP_COBJS))
+
 
 COBJS	:= $(sort $(COBJS-y))
-SRCS	:= $(AOBJS:.o=.S) $(COBJS:.o=.c)
+SRCS	:= $(AOBJS:.o=.S) $(COBJS:.o=.c) $(BOOTSTRAP_COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(AOBJS) $(COBJS))
 
 CPPFLAGS += -I..
 
-all:	$(LIB) $(AOBJS)
+all:	$(LIB) $(BOOTSTRAP_LIB-y) $(AOBJS)
 
 $(LIB): $(obj).depend $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+$(BOOTSTRAP_LIB): $(obj).depend $(BOOTSTRAP_OBJS)
+	$(AR) $(ARFLAGS) $@ $(BOOTSTRAP_OBJS)
 
 $(obj)env_embedded.o: $(src)env_embedded.c $(obj)../tools/envcrc
 	$(CC) $(AFLAGS) -Wa,--no-warn \

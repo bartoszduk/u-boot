@@ -47,6 +47,6 @@ PLATFORM_CPPFLAGS += -DCONFIG_MIPS -D__MIPS__
 # On the other hand, we want PIC in the U-Boot code to relocate it from ROM
 # to RAM. $28 is always used as gp.
 #
-PLATFORM_CPPFLAGS		+= -G 0 -mabicalls -fpic
+PLATFORM_CPPFLAGS		+= -G 0 -mabicalls -fpic -g
 PLATFORM_CPPFLAGS		+= -msoft-float
 PLATFORM_LDFLAGS		+= -G 0 -static -n -nostdlib

@@ -32,7 +32,9 @@ SOBJS	=
 
 CFLAGS += -D_LZMA_PROB32
 
-COBJS-$(CONFIG_LZMA) += LzmaDec.o LzmaTools.o
+COBJS-$(CONFIG_LZMA)$(CONFIG_BOOTSTRAP_LZMA) += LzmaDec.o LzmaTools.o
+
+COBJS-y	+= $(COBJS-yy)
 
 COBJS	= $(COBJS-y)
 SRCS 	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)

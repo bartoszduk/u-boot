@@ -722,6 +722,27 @@ int cpu_disable(int nr);
 int cpu_release(int nr, int argc, char *argv[]);
 #endif
 
+/* Bootstrap specific code */
+#ifdef CONFIG_BOOTSTRAP
+void bootstrap_hang(void) __attribute__ ((noreturn));
+void bootstrap_board_init_f(ulong) __attribute__ ((noreturn));
+void bootstrap_board_init_r(gd_t *, ulong) __attribute__ ((noreturn));
+int bootstrap_checkboard(void);
+
+int bootstrap_serial_init(void);
+void bootstrap_serial_exit(void);
+void bootstrap_serial_setbrg(void);
+void bootstrap_serial_putc(const char);
+void bootstrap_serial_putc_raw(const char);
+void bootstrap_serial_puts(const char *);
+int bootstrap_serial_getc(void);
+int bootstrap_serial_tstc(void);
+
+phys_size_t bootstrap_initdram (int);
+
+int copy_uboot(void *dst, size_t unc_size, void *src, size_t size);
+#endif
+
 #endif /* __ASSEMBLY__ */
 
 /* Put only stuff here that the assembler can digest */

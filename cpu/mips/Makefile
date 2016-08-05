@@ -24,24 +24,45 @@
 include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(CPU).a
+BOOTSTRAP_LIB = $(obj)lib$(CPU)_bootstrap.a
+
+BOOTSTRAP_LIB-$(CONFIG_BOOTSTRAP) = $(BOOTSTRAP_LIB)
 
 START	= start.o
 SOBJS-y	= cache.o
-COBJS-y	= cpu.o interrupts.o
+COBJS-y	= cpu.o reset.o interrupts.o
 
 SOBJS-$(CONFIG_INCA_IP)	+= incaip_wdt.o
 COBJS-$(CONFIG_INCA_IP)	+= asc_serial.o incaip_clock.o
+#COBJS-$(CONFIG_IFX_ASC) += ifx_asc.o
 COBJS-$(CONFIG_PURPLE)	+= asc_serial.o
 COBJS-$(CONFIG_SOC_AU1X00) += au1x00_eth.o au1x00_serial.o au1x00_usb_ohci.o
 
-SRCS	:= $(START:.o=.S) $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
+#BOOTSTRAP_START = start_bootstrap.o
+BOOTSTRAP_START-$(CONFIG_BOOTSTRAP) += start_bootstrap.o #$(BOOTSTRAP_START)
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP) += cpu.o interrupts.o reset_bootstrap.o
+BOOTSTRAP_SOBJS-$(CONFIG_BOOTSTRAP) += cache.o
+BOOTSTRAP_COBJS-$(CONFIG_DANUBE) += danube-clock.o
+BOOTSTRAP_COBJS-$(CONFIG_AR9) += ar9-clock.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP_SERIAL) += ifx_asc.o
+
+BOOTSTRAP_OBJS	:= $(addprefix $(obj),$(BOOTSTRAP_SOBJS-y) $(BOOTSTRAP_COBJS-y))
+BOOTSTRAP_START := $(addprefix $(obj),$(BOOTSTRAP_START-y))
+
+SRCS	:= $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c) $(BOOTSTRAP_START-y:.o=.S) $(BOOTSTRAP_SOBJS-y:.o=.S) $(BOOTSTRAP_COBJS-y:.o=.c)
 OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
 START	:= $(addprefix $(obj),$(START))
 
-all:	$(obj).depend $(START) $(LIB)
+all:	$(obj).depend $(START) $(LIB) $(BOOTSTRAP_START-y) $(BOOTSTRAP_LIB-y)
 
-$(LIB):	$(OBJS)
+$(LIB):	 $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+#$(BOOTSTRAP_START):	$(obj).depend
+
+$(BOOTSTRAP_LIB):	$(BOOTSTRAP_OBJS)
+	$(AR) $(ARFLAGS) $@ $(BOOTSTRAP_OBJS)
+
 
 #########################################################################
 

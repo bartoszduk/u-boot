@@ -24,6 +24,9 @@
 include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(ARCH).a
+BOOTSTRAP_LIB	=	$(obj)lib$(ARCH)_bootstrap.a
+
+BOOTSTRAP_LIB-$(CONFIG_BOOTSTRAP)	= $(BOOTSTRAP_LIB)
 
 SOBJS-y	+=
 
@@ -35,11 +38,20 @@ COBJS-y	+= bootm.o
 endif
 COBJS-y	+= time.o
 
-SRCS	:= $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP)	+= board_bootstrap.o
+BOOTSTRAP_COBJS-$(CONFIG_BOOTSTRAP)	+= time.o
+
+BOOTSTRAP_OBJS	:= $(addprefix $(obj),$(BOOTSTRAP_SOBJS-y) $(BOOTSTRAP_COBJS-y))
+
+SRCS	:= $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c) $(BOOTSTRAP_SOBJS-y:.o=.S) $(BOOTSTRAP_COBJS-y:.o=.c)
 OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
 
+all: $(obj).depend $(LIB) $(BOOTSTRAP_LIB)
 $(LIB):	$(obj).depend $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+$(BOOTSTRAP_LIB):	$(obj).depend $(BOOTSTRAP_OBJS)
+	$(AR) $(ARFLAGS) $@ $(BOOTSTRAP_OBJS)
 
 #########################################################################
 

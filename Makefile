@@ -183,6 +183,12 @@ endif
 
 OBJS := $(addprefix $(obj),$(OBJS))
 
+ifeq ($(CONFIG_BOOTSTRAP),y)
+BOOTSTRAP_OBJS  = cpu/$(ARCH)/start_bootstrap.o
+
+BOOTSTRAP_OBJS := $(addprefix $(obj),$(BOOTSTRAP_OBJS))
+endif
+
 LIBS  = lib_generic/libgeneric.a
 LIBS += lib_generic/lzma/liblzma.a
 LIBS += lib_generic/lzo/liblzo.a
@@ -254,6 +260,25 @@ LIBS := $(addprefix $(obj),$(LIBS))
 LIBBOARD = board/$(BOARDDIR)/lib$(BOARD).a
 LIBBOARD := $(addprefix $(obj),$(LIBBOARD))
 
+ifeq ($(CONFIG_BOOTSTRAP),y)
+BOOTSTRAP_LIBS =  lib_generic/libgeneric_bootstrap.a
+BOOTSTRAP_LIBS += cpu/$(ARCH)/lib$(ARCH)_bootstrap.a
+BOOTSTRAP_LIBS += lib_$(ARCH)/lib$(ARCH)_bootstrap.a
+BOOTSTRAP_LIBS += common/libcommon_bootstrap.a
+BOOTSTRAP_LIBS-$(CONFIG_BOOTSTRAP_SERIAL) += drivers/serial/libserial.a
+
+BOOTSTRAP_LIBS-$(CONFIG_BOOTSTRAP_LZMA) += lib_generic/lzma/liblzma.a
+BOOTSTRAP_LIBS-$(CONFIG_BOOTSTRAP_LZO) += lib/lzo/liblzo.a
+BOOTSTRAP_LIBS += $(BOOTSTRAP_LIBS-y)
+
+BOOTSTRAP_LIBS := $(addprefix $(obj),$(BOOTSTRAP_LIBS))
+.PHONY : $(BOOTSTRAP_LIBS)
+
+BOOTSTRAP_LIBBOARD = board/$(BOARDDIR)/lib$(BOARD)_bootstrap.a
+BOOTSTRAP_LIBBOARD := $(addprefix $(obj),$(BOOTSTRAP_LIBBOARD))
+endif
+
+
 # Add GCC lib
 ifdef USE_PRIVATE_LIBGCC
 ifeq ("$(USE_PRIVATE_LIBGCC)", "yes")
@@ -266,6 +291,9 @@ PLATFORM_LIBGCC = -L $(shell dirname `$(CC) $(CFLAGS) -print-libgcc-file-name`) 
 endif
 PLATFORM_LIBS += $(PLATFORM_LIBGCC)
 export PLATFORM_LIBS
+
+BOOTSTRAP_PLATFORM_LIBS += $(PLATFORM_LIBGCC)
+export BOOTSTRAP_PLATFORM_LIBS
 
 # Special flags for CPP when processing the linker script.
 # Pass the version down so we can handle backwards compatibility
@@ -289,11 +317,18 @@ endif
 __OBJS := $(subst $(obj),,$(OBJS))
 __LIBS := $(subst $(obj),,$(LIBS)) $(subst $(obj),,$(LIBBOARD))
 
+__BOOTSTRAP_OBJS := $(subst $(obj),,$(BOOTSTRAP_OBJS))
+__BOOTSTRAP_LIBS := $(subst $(obj),,$(BOOTSTRAP_LIBS)) $(subst $(obj),,$(BOOTSTRAP_LIBBOARD))
+
 #########################################################################
 #########################################################################
 
 # Always append ALL so that arch config.mk's can add custom ones
 ALL += $(obj)u-boot.srec $(obj)u-boot.bin $(obj)System.map $(U_BOOT_NAND) $(U_BOOT_ONENAND)
+
+ifeq ($(CONFIG_BOOTSTRAP),y)
+ALL += $(obj)u-boot-bootstrap.srec $(obj)u-boot-bootstrap.bin
+endif
 
 all:		$(ALL)
 
@@ -305,6 +340,19 @@ $(obj)u-boot.srec:	$(obj)u-boot
 
 $(obj)u-boot.bin:	$(obj)u-boot
 		$(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
+
+$(obj)u-boot.bin.gz:	$(obj)u-boot.bin
+		gzip -c $< > $@
+
+$(obj)u-boot.bin.lzma:	$(obj)u-boot.bin
+		echo lzma -e -z -c $<  $@
+		lzma e  $< $@
+
+$(obj)u-boot.bin.lzo:	$(obj)u-boot.bin
+		lzop -9 -c $< > $@
+
+$(obj)u-boot.bin.bz2:	$(obj)u-boot.bin
+		bzip2 --best -z -c $< > $@
 
 $(obj)u-boot.ldr:	$(obj)u-boot
 		$(CREATE_LDR_ENV)
@@ -335,12 +383,12 @@ $(obj)u-boot.sha1:	$(obj)u-boot.bin
 		$(obj)tools/ubsha1 $(obj)u-boot.bin
 
 $(obj)u-boot.dis:	$(obj)u-boot
-		$(OBJDUMP) -d $< > $@
+		$(OBJDUMP) -S -d $< > $@
 
 GEN_UBOOT = \
 		UNDEF_SYM=`$(OBJDUMP) -x $(LIBBOARD) $(LIBS) | \
 		sed  -n -e 's/.*\($(SYM_PREFIX)__u_boot_cmd_.*\)/-u\1/p'|sort|uniq`;\
-		cd $(LNDIR) && $(LD) $(LDFLAGS) $$UNDEF_SYM $(__OBJS) \
+		cd $(LNDIR) && $(LD) --gc-sections $(LDFLAGS) $$UNDEF_SYM $(__OBJS) \
 			--start-group $(__LIBS) --end-group $(PLATFORM_LIBS) \
 			-Map u-boot.map -o u-boot
 $(obj)u-boot:	depend $(SUBDIRS) $(OBJS) $(LIBBOARD) $(LIBS) $(LDSCRIPT) $(obj)u-boot.lds
@@ -362,6 +410,120 @@ $(LIBS):	depend $(SUBDIRS)
 $(LIBBOARD):	depend $(LIBS)
 		$(MAKE) -C $(dir $(subst $(obj),,$@))
 
+# Bootstrap targets
+
+ifeq ($(CONFIG_BOOTSTRAP),y)
+$(obj)u-boot-bootstrap.hex:	$(obj)u-boot-bootstrap
+		$(OBJCOPY) ${OBJCFLAGS} -O ihex $< $@
+
+$(obj)u-boot-bootstrap.srec:	$(obj)u-boot-bootstrap
+		$(OBJCOPY) -O srec $< $@
+
+$(obj)u-boot-bootstrap.bin:	$(obj)u-boot-bootstrap
+		$(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
+		$(BOARD_SIZE_CHECK)
+
+$(obj)u-boot-bootstrap.bin.gz:	$(obj)u-boot-bootstrap.bin
+		gzip -c $< > $@
+
+$(obj)u-boot-bootstrap.bin.lzma:	$(obj)u-boot-bootstrap.bin
+		lzma -e -z -c $< > $@
+
+$(obj)u-boot.bin-bootstrap.lzo:	$(obj)u-boot-bootstrap.bin
+		lzop -9 -c $< > $@
+
+$(obj)u-boot.bin-bootstrap.bz2:	$(obj)u-boot-bootstrap.bin
+		bzip2 --best -z -c $< > $@
+
+$(obj)u-boot-bootstrap.ldr:	$(obj)u-boot-bootstrap
+		$(CREATE_LDR_ENV)
+		$(LDR) -T $(CONFIG_BFIN_CPU) -c $@ $< $(LDR_FLAGS)
+		$(BOARD_SIZE_CHECK)
+
+$(obj)u-boot-bootstrap.ldr.hex:	$(obj)u-boot-bootstrap.ldr
+		$(OBJCOPY) ${OBJCFLAGS} -O ihex $< $@ -I binary
+
+$(obj)u-boot-bootstrap.ldr.srec:	$(obj)u-boot-bootstrap.ldr
+		$(OBJCOPY) ${OBJCFLAGS} -O srec $< $@ -I binary
+
+$(obj)u-boot-bootstrap.img:	$(obj)u-boot-bootstrap.bin
+		$(obj)tools/mkimage -A $(ARCH) -T firmware -C none \
+		-a $(CONFIG_BOOTSTRAP_BASE) -e 0 \
+		-n $(shell sed -n -e 's/.*U_BOOT_VERSION//p' $(VERSION_FILE) | \
+			sed -e 's/"[	 ]*$$/ for $(BOARD) board"/') \
+		-d $< $@
+
+$(obj)u-boot-bootstrap.imx:       $(obj)u-boot-bootstrap.bin
+		$(obj)tools/mkimage -n $(IMX_CONFIG) -T imximage \
+		-e $(CONFIG_BOOTSTRAP_BASE) -d $< $@
+
+$(obj)u-boot-bootstrap.kwb:       $(obj)u-boot-bootstrap.bin
+		$(obj)tools/mkimage -n $(CONFIG_SYS_KWD_CONFIG) -T kwbimage \
+		-a $(CONFIG_SYS_TEXT_BASE) -e $(CONFIG_SYS_TEXT_BASE) -d $< $@
+
+$(obj)u-boot-bootstrap.sha1:	$(obj)u-boot-bootstrap.bin
+		$(obj)tools/ubsha1 $(obj)u-boot-bootstrap.bin
+
+$(obj)u-boot-bootstrap.dis:	$(obj)u-boot-bootstrap
+		echo $(OBJDUMP) -S -d $< > $@
+		$(OBJDUMP) -S -d $< > $@
+
+PAYLOAD_FILE_BASE=$(obj)u-boot.bin
+ifeq ($(CONFIG_BOOTSTRAP_GZIP),y)
+PAYLOAD_FILE_EXT:=.gz
+endif
+ifeq ($(CONFIG_BOOTSTRAP_LZMA),y)
+PAYLOAD_FILE_EXT:=.lzma
+endif
+ifeq ($(CONFIG_BOOTSTRAP_LZO),y)
+PAYLOAD_FILE_EXT:=.lzo
+endif
+ifeq ($(CONFIG_BOOTSTRAP_BZIP2),y)
+PAYLOAD_FILE_EXT:=.bz2
+endif
+
+PAYLOAD_FILE := $(PAYLOAD_FILE_BASE)$(PAYLOAD_FILE_EXT)
+
+$(obj).payload.s: $(PAYLOAD_FILE)
+		echo ".globl payload_start" > $@
+		echo ".globl payload_end" >> $@
+		echo ".globl payload_size" >> $@
+		echo ".globl payload_uncsize" >> $@
+		echo .section .payload,\"a\",@progbits >> $@
+		echo "payload_size:" >> $@
+		echo -n ".word " >> $@
+		wc -c $(PAYLOAD_FILE) | cut -f1 -d' ' >> $@
+		echo "payload_uncsize:" >> $@
+		echo -n ".word " >> $@
+		wc -c $(obj)u-boot.bin | cut -f1 -d' ' >> $@
+		echo "payload_start:" >> $@
+		echo .incbin \"$(PAYLOAD_FILE)\" >> $@
+		echo "payload_end:" >> $@
+
+
+GEN_UBOOT_BOOTSTRAP = \
+		UNDEF_SYM=`$(OBJDUMP) -x $(BOOTSTRAP_LIBBOARD) $(BOOTSTRAP_LIBS) | \
+		sed  -n -e 's/.*\($(SYM_PREFIX)__u_boot_cmd_.*\)/-u\1/p'|sort|uniq`;\
+		cd $(LNDIR) && $(LD) --gc-sections $(BOOTSTRAP_LDFLAGS) $$UNDEF_SYM  $(obj).payload.o $(__BOOTSTRAP_OBJS) \
+			--start-group $(__BOOTSTRAP_LIBS) --end-group $(BOOTSTRAP_PLATFORM_LIBS) \
+			-Map u-boot-bootstrap.map -o u-boot-bootstrap
+
+$(obj)u-boot-bootstrap:	depend $(SUBDIRS) $(BOOTSTRAP_OBJS) $(BOOTSTRAP_LIBS) $(BOOTSTRAP_LDSCRIPT) $(obj)u-boot-bootstrap.lds $(obj).payload.o #$(BOOTSTRAP_LIBBOARD) 
+		#echo "--------$(BOOTSTRAP_LIBBOARD)"
+		#echo "$(GEN_UBOOT_BOOTSTRAP)"
+		$(GEN_UBOOT_BOOTSTRAP)
+ifeq ($(CONFIG_KALLSYMS),y)
+		smap=`$(call SYSTEM_MAP,u-boot-bootstrap) | \
+			awk '$$2 ~ /[tTwW]/ {printf $$1 $$3 "\\\\000"}'` ; \
+		$(CC) $(CFLAGS) -DSYSTEM_MAP="\"$${smap}\"" \
+			-c common/system_map.c -o $(obj)common/system_map.o
+		$(GEN_UBOOT_BOOTSTRAP) $(obj)common/system_map.o
+endif
+
+$(BOOTSTRAP_LIBBOARD):	depend $(BOOTSTRAP_LIBS)
+		$(MAKE) -C $(dir $(subst $(obj),,$@)) $(notdir $@)
+endif
+
 $(SUBDIRS):	depend
 		$(MAKE) -C $@ all
 
@@ -370,6 +532,9 @@ $(LDSCRIPT):	depend
 
 $(obj)u-boot.lds: $(LDSCRIPT)
 		$(CPP) $(CPPFLAGS) $(LDPPFLAGS) -ansi -D__ASSEMBLY__ -P - <$^ >$@
+
+$(obj)u-boot-bootstrap.lds: $(BOOTSTRAP_LDSCRIPT)
+		$(CPP) $(CPPFLAGS) $(BOOTSTRAP_LDPPFLAGS) -ansi -D__ASSEMBLY__ -P - <$^ >$@
 
 $(NAND_SPL):	$(TIMESTAMP_FILE) $(VERSION_FILE) $(obj)include/autoconf.mk
 		$(MAKE) -C nand_spl/board/$(BOARDDIR) all
@@ -3835,6 +4000,7 @@ clean:
 	       $(obj)board/netstar/{eeprom,crcek,crcit,*.srec,*.bin}	  \
 	       $(obj)board/trab/trab_fkt   $(obj)board/voiceblue/eeprom   \
 	       $(obj)board/armltd/{integratorap,integratorcp}/u-boot.lds  \
+	       $(obj)u-boot-bootstrap.lds			\
 	       $(obj)lib_blackfin/u-boot.lds				  \
 	       $(obj)u-boot.lds						  \
 	       $(obj)cpu/blackfin/bootrom-asm-offsets.[chs]
@@ -3859,6 +4025,12 @@ clobber:	clean
 	@rm -f $(obj)u-boot $(obj)u-boot.map $(obj)u-boot.hex $(ALL)
 	@rm -f $(obj)u-boot.kwb
 	@rm -f $(obj)u-boot.imx
+	@rm -f $(obj)u-boot.bin{.gz,.lzma,.lzo,.bz2}
+	@rm -f $(obj)u-boot-bootstrap $(obj)u-boot-bootstrap.map $(obj)u-boot-bootstrap.hex
+	@rm -f $(obj)u-boot-bootstrap.kwb
+	@rm -f $(obj)u-boot-bootstrap.imx
+	@rm -f $(obj)u-boot-bootstrap.bin{.gz,.lzma,.lzo,.bz2}
+	@rm -f $(obj).payload.s
 	@rm -f $(obj)tools/{env/crc32.c,inca-swap-bytes}
 	@rm -f $(obj)cpu/mpc824x/bedbug_603e.c
 	@rm -f $(obj)include/asm/proc $(obj)include/asm/arch $(obj)include/asm

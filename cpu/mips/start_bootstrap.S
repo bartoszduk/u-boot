@@ -1,0 +1,534 @@
+/*
+ *  Startup Code for MIPS32 CPU-core base on start.S source
+ *
+ *  Copyright (c) 2010	Industrie Dial Face S.p.A.
+ *  Luigi 'Comio' Mantellini <luigi.mantellini@idf-hit.com>
+ *
+ *  Copyright (c) 2003	Wolfgang Denk <wd@denx.de>
+ *
+ * See file CREDITS for list of people who contributed to this
+ * project.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
+//#include <generated/generic-asm-offsets.h>
+#include <config.h>
+#include <asm/regdef.h>
+//#include <asm/mipsregs.h>
+#define CP0_INDEX $0
+#define CP0_RANDOM $1
+#define CP0_ENTRYLO0 $2
+#define CP0_ENTRYLO1 $3
+#define CP0_CONF $3
+#define CP0_CONTEXT $4
+#define CP0_PAGEMASK $5
+#define CP0_WIRED $6
+#define CP0_INFO $7
+#define CP0_BADVADDR $8
+#define CP0_COUNT $9
+#define CP0_ENTRYHI $10
+#define CP0_COMPARE $11
+#define CP0_STATUS $12
+#define CP0_CAUSE $13
+#define CP0_EPC $14
+#define CP0_PRID $15
+#define CP0_EBASE $15,1
+#define CP0_CONFIG $16
+#define CP0_LLADDR $17
+#define CP0_WATCHLO $18
+#define CP0_WATCHHI $19
+#define CP0_XCONTEXT $20
+#define CP0_FRAMEMASK $21
+#define CP0_DIAGNOSTIC $22
+#define CP0_DEBUG $23
+#define CP0_DEPC $24
+#define CP0_PERFORMANCE $25
+#define CP0_ECC $26
+#define CP0_CACHEERR $27
+#define CP0_TAGLO $28
+#define CP0_TAGHI $29
+#define CP0_ERROREPC $30
+#define CP0_DESAVE $31
+#define ST0_CU0                 0x10000000
+#define CONF_CM_UNCACHED	2
+#define CONF_CM_CACHABLE_NONCOHERENT	3
+#define EBASEB_CPUNUM               0
+#define EBASEF_CPUNUM               (0x3ff << EBASEB_CPUNUM)
+#define MIPS_CONF7_RPS              4 //((unsigned long)(1) << 2)
+#define CONF_CM_CACHABLE_NONCOHERENT        3
+#ifndef CONFIG_SYS_MIPS_CACHE_OPER_MODE
+#define CONFIG_SYS_MIPS_CACHE_OPER_MODE CONF_CM_CACHABLE_NONCOHERENT
+#endif
+
+	/*
+	 * For the moment disable interrupts, mark the kernel mode and
+	 * set ST0_KX so that the CPU does not spit fire when using
+	 * 64-bit addresses.
+	 */
+	.macro	setup_c0_status set clr
+	.set	push
+	mfc0	t0, CP0_STATUS
+	or	t0, ST0_CU0 | \set | 0x1f | \clr
+	xor	t0, 0x1f | \clr
+	mtc0	t0, CP0_STATUS
+	.set	noreorder
+	sll	zero, 3				# ehb
+	.set	pop
+	.endm
+
+	.macro	setup_c0_status_reset
+#ifdef CONFIG_64BIT
+	setup_c0_status ST0_KX 0
+#else
+	setup_c0_status 0 0
+#endif
+	.endm
+
+#define RVECENT(f,n) \
+   b f; nop
+#define XVECENT(f,bev) \
+   b f     ;           \
+   li k0,bev
+
+	.set noreorder
+
+	.globl _start
+	.text
+_start:
+	RVECENT(reset,0)	/* U-boot entry point */
+	RVECENT(reset,1)	/* software reboot */
+#if defined(CONFIG_INCA_IP)
+	.word INFINEON_EBU_BOOTCFG /* EBU init code, fetched during booting */
+	.word 0x00000000           /* phase of the flash                    */
+#elif defined(CONFIG_PURPLE)
+	.word INFINEON_EBU_BOOTCFG /* EBU init code, fetched during booting */
+	.word INFINEON_EBU_BOOTCFG /* EBU init code, fetched during booting */
+#else
+	.word INFINEON_EBU_BOOTCFG /* EBU init code, fetched during booting */
+	.word 0x00000000           /* phase of the flash                    */
+#endif
+	RVECENT(romReserved,3)
+	RVECENT(romReserved,4)
+	RVECENT(romReserved,5)
+	RVECENT(romReserved,6)
+	RVECENT(romReserved,7)
+	RVECENT(romReserved,8)
+	RVECENT(romReserved,9)
+	RVECENT(romReserved,10)
+	RVECENT(romReserved,11)
+	RVECENT(romReserved,12)
+	RVECENT(romReserved,13)
+	RVECENT(romReserved,14)
+	RVECENT(romReserved,15)
+	RVECENT(romReserved,16)
+	RVECENT(romReserved,17)
+	RVECENT(romReserved,18)
+	RVECENT(romReserved,19)
+	RVECENT(romReserved,20)
+	RVECENT(romReserved,21)
+	RVECENT(romReserved,22)
+	RVECENT(romReserved,23)
+	RVECENT(romReserved,24)
+	RVECENT(romReserved,25)
+	RVECENT(romReserved,26)
+	RVECENT(romReserved,27)
+	RVECENT(romReserved,28)
+	RVECENT(romReserved,29)
+	RVECENT(romReserved,30)
+	RVECENT(romReserved,31)
+	RVECENT(romReserved,32)
+	RVECENT(romReserved,33)
+	RVECENT(romReserved,34)
+	RVECENT(romReserved,35)
+	RVECENT(romReserved,36)
+	RVECENT(romReserved,37)
+	RVECENT(romReserved,38)
+	RVECENT(romReserved,39)
+	RVECENT(romReserved,40)
+	RVECENT(romReserved,41)
+	RVECENT(romReserved,42)
+	RVECENT(romReserved,43)
+	RVECENT(romReserved,44)
+	RVECENT(romReserved,45)
+	RVECENT(romReserved,46)
+	RVECENT(romReserved,47)
+	RVECENT(romReserved,48)
+	RVECENT(romReserved,49)
+	RVECENT(romReserved,50)
+	RVECENT(romReserved,51)
+	RVECENT(romReserved,52)
+	RVECENT(romReserved,53)
+	RVECENT(romReserved,54)
+	RVECENT(romReserved,55)
+	RVECENT(romReserved,56)
+	RVECENT(romReserved,57)
+	RVECENT(romReserved,58)
+	RVECENT(romReserved,59)
+	RVECENT(romReserved,60)
+	RVECENT(romReserved,61)
+	RVECENT(romReserved,62)
+	RVECENT(romReserved,63)
+	XVECENT(romExcHandle,0x200)	/* bfc00200: R4000 tlbmiss vector */
+	RVECENT(romReserved,65)
+	RVECENT(romReserved,66)
+	RVECENT(romReserved,67)
+	RVECENT(romReserved,68)
+	RVECENT(romReserved,69)
+	RVECENT(romReserved,70)
+	RVECENT(romReserved,71)
+	RVECENT(romReserved,72)
+	RVECENT(romReserved,73)
+	RVECENT(romReserved,74)
+	RVECENT(romReserved,75)
+	RVECENT(romReserved,76)
+	RVECENT(romReserved,77)
+	RVECENT(romReserved,78)
+	RVECENT(romReserved,79)
+	XVECENT(romExcHandle,0x280)	/* bfc00280: R4000 xtlbmiss vector */
+	RVECENT(romReserved,81)
+	RVECENT(romReserved,82)
+	RVECENT(romReserved,83)
+	RVECENT(romReserved,84)
+	RVECENT(romReserved,85)
+	RVECENT(romReserved,86)
+	RVECENT(romReserved,87)
+	RVECENT(romReserved,88)
+	RVECENT(romReserved,89)
+	RVECENT(romReserved,90)
+	RVECENT(romReserved,91)
+	RVECENT(romReserved,92)
+	RVECENT(romReserved,93)
+	RVECENT(romReserved,94)
+	RVECENT(romReserved,95)
+	XVECENT(romExcHandle,0x300)	/* bfc00300: R4000 cache vector */
+	RVECENT(romReserved,97)
+	RVECENT(romReserved,98)
+	RVECENT(romReserved,99)
+	RVECENT(romReserved,100)
+	RVECENT(romReserved,101)
+	RVECENT(romReserved,102)
+	RVECENT(romReserved,103)
+	RVECENT(romReserved,104)
+	RVECENT(romReserved,105)
+	RVECENT(romReserved,106)
+	RVECENT(romReserved,107)
+	RVECENT(romReserved,108)
+	RVECENT(romReserved,109)
+	RVECENT(romReserved,110)
+	RVECENT(romReserved,111)
+	XVECENT(romExcHandle,0x380)	/* bfc00380: R4000 general vector */
+	RVECENT(romReserved,113)
+	RVECENT(romReserved,114)
+	RVECENT(romReserved,115)
+	RVECENT(romReserved,116)
+	RVECENT(romReserved,116)
+	RVECENT(romReserved,118)
+	RVECENT(romReserved,119)
+	RVECENT(romReserved,120)
+	RVECENT(romReserved,121)
+	RVECENT(romReserved,122)
+	RVECENT(romReserved,123)
+	RVECENT(romReserved,124)
+	RVECENT(romReserved,125)
+	RVECENT(romReserved,126)
+	RVECENT(romReserved,127)
+
+	/* We hope there are no more reserved vectors!
+	 * 128 * 8 == 1024 == 0x400
+	 * so this is address R_VEC+0x400 == 0xbfc00400
+	 */
+#if 1
+	XVECENT(romExcHandle,0x400);    /* bfc00400: Int, CauseIV=1 */
+	RVECENT(romReserved,129);
+	RVECENT(romReserved,130);
+	RVECENT(romReserved,131);
+	RVECENT(romReserved,132);
+	RVECENT(romReserved,133);
+	RVECENT(romReserved,134);
+	RVECENT(romReserved,135);
+	RVECENT(romReserved,136);
+	RVECENT(romReserved,137);
+	RVECENT(romReserved,138);
+	RVECENT(romReserved,139);
+	RVECENT(romReserved,140);
+	RVECENT(romReserved,141);
+	RVECENT(romReserved,142);
+	RVECENT(romReserved,143);
+	XVECENT(romExcHandle,0x480);    /* bfc00480: EJTAG debug exception */
+#elif defined(CONFIG_PURPLE)
+/* 0xbfc00400 */
+	.word	0xdc870000
+	.word	0xfca70000
+	.word	0x20840008
+	.word	0x20a50008
+	.word	0x20c6ffff
+	.word	0x14c0fffa
+	.word	0x00000000
+	.word	0x03e00008
+	.word	0x00000000
+	.word	0x00000000
+/* 0xbfc00428 */
+	.word	0xdc870000
+	.word	0xfca70000
+	.word	0x20840008
+	.word	0x20a50008
+	.word	0x20c6ffff
+	.word	0x14c0fffa
+	.word	0x00000000
+	.word	0x03e00008
+	.word	0x00000000
+	.word	0x00000000
+#endif /* CONFIG_PURPLE */
+	.align 4
+reset:
+#ifdef CONFIG_SYS_MIPS_MULTI_CPU
+       mfc0    k0, CP0_EBASE
+       and     k0, EBASEF_CPUNUM
+       bne     k0, zero, ifx_mips_handler_cpux
+       nop
+#endif
+	/* Clear watch registers.
+	 */
+	mtc0	zero, CP0_WATCHLO
+	mtc0	zero, CP0_WATCHHI
+
+	/* WP(Watch Pending), SW0/1 should be cleared. */
+	mtc0	zero, CP0_CAUSE
+
+	setup_c0_status_reset
+#if defined(CONFIG_MIPS24KEC) || defined(CONFIG_MIPS34KC)
+	/* CONFIG7 register */
+	/* Erratum "RPS May Cause Incorrect Instruction Execution"
+	* for 24KEC and 34KC */
+	mfc0    k0, CP0_CONFIG, 7
+	li      k1, MIPS_CONF7_RPS
+	or      k0, k1
+	mtc0    k0, CP0_CONFIG, 7
+#endif
+
+	/* Init Timer */
+	mtc0	zero, CP0_COUNT
+	mtc0	zero, CP0_COMPARE
+
+	/* CONFIG0 register */
+	li	t0, CONF_CM_UNCACHED
+	mtc0	t0, CP0_CONFIG
+
+	/* Initialize $gp.
+	 */
+	bal	1f
+	nop
+	.word	_gp
+1:
+	lw	gp, 0(ra)
+
+	/* Initialize any external memory.
+	 */
+	la	t9, lowlevel_init
+	jalr	t9
+	nop
+
+	/* Initialize caches...
+	 */
+	la	t9, mips_cache_reset
+	jalr	t9
+	nop
+
+	/* ... and enable them.
+	 */
+	li	t0, CONF_CM_CACHABLE_NONCOHERENT /*CONFIG_SYS_MIPS_CACHE_OPER_MODE*/
+	mtc0	t0, CP0_CONFIG
+
+	/* Set up temporary stack.
+	 */
+#ifdef CONFIG_SYS_INIT_RAM_LOCK_MIPS
+	li	a0, CONFIG_SYS_INIT_SP_OFFSET
+	la	t9, mips_cache_lock
+	jalr	t9
+	nop
+#endif
+
+	li	t0, CONFIG_SYS_SDRAM_BASE + CONFIG_SYS_INIT_SP_OFFSET
+	la	sp, 0(t0)
+
+	la	t9, bootstrap_board_init_f
+	jr	t9
+	nop
+
+/*
+ * void relocate_code (addr_sp, gd, addr_moni)
+ *
+ * This "function" does not return, instead it continues in RAM
+ * after relocating the monitor code.
+ *
+ * a0 = addr_sp
+ * a1 = gd
+ * a2 = destination address
+ */
+	.globl	relocate_code
+	.ent	relocate_code
+relocate_code:
+	move	sp, a0		/* Set new stack pointer	*/
+
+	li	t0, CONFIG_BOOTSTRAP_TEXT_BASE
+	la	t3, in_ram
+	lw	t2, -12(t3)	/* t2 <-- uboot_end_data	*/
+	move	t1, a2
+	move	s2, a2		/* s2 <-- destination address	*/
+
+	/*
+	 * Fix $gp:
+	 *
+	 * New $gp = (Old $gp - CONFIG_SYS_MONITOR_BASE) + Destination Address
+	 */
+	move	t6, gp
+	sub	gp, CONFIG_BOOTSTRAP_TEXT_BASE
+	add	gp, a2		/* gp now adjusted		*/
+	sub	s1, gp, t6	/* s1 <-- relocation offset	*/
+
+	/*
+	 * t0 = source address
+	 * t1 = target address
+	 * t2 = source end address
+	 */
+
+	/*
+	 * Save destination address and size for later usage in flush_cache()
+	 */
+	move	s0, a1		/* save gd in s0		*/
+	move	a0, t1		/* a0 <-- destination addr	*/
+	sub	a1, t2, t0	/* a1 <-- size			*/
+
+	/* On the purple board we copy the code earlier in a special way
+	 * in order to solve flash problems
+	 */
+#ifndef CONFIG_PURPLE
+1:
+	lw	t3, 0(t0)
+	sw	t3, 0(t1)
+	addu	t0, 4
+	ble	t0, t2, 1b
+	addu	t1, 4		/* delay slot			*/
+#endif
+
+	/* If caches were enabled, we would have to flush them here.
+	 */
+
+	/* a0 & a1 are already set up for flush_cache(start, size) */
+	la	t9, flush_cache
+	jalr	t9
+	nop
+
+	/* Jump to where we've relocated ourselves.
+	 */
+	addi	t0, s2, in_ram - _start
+	jr	t0
+	nop
+
+	.word	_gp
+	.word	_GLOBAL_OFFSET_TABLE_
+	.word	uboot_end_data
+	.word	uboot_end
+	.word	num_got_entries
+
+in_ram:
+	/*
+	 * Now we want to update GOT.
+	 *
+	 * GOT[0] is reserved. GOT[1] is also reserved for the dynamic object
+	 * generated by GNU ld. Skip these reserved entries from relocation.
+	 */
+	lw	t3, -4(t0)	/* t3 <-- num_got_entries	*/
+	lw	t4, -16(t0)	/* t4 <-- _GLOBAL_OFFSET_TABLE_	*/
+	lw	t5, -20(t0)	/* t5 <-- _gp	*/
+	sub	t4, t5		/* compute offset*/
+	add	t4, t4, gp	/* t4 now holds relocated _GLOBAL_OFFSET_TABLE_	*/
+	addi	t4, t4, 8	/* Skipping first two entries.	*/
+	li	t2, 2
+1:
+	lw	t1, 0(t4)
+	beqz	t1, 2f
+	add	t1, s1
+	sw	t1, 0(t4)
+2:
+	addi	t2, 1
+	blt	t2, t3, 1b
+	addi	t4, 4		/* delay slot			*/
+
+	/* Clear BSS.
+	 */
+	lw	t1, -12(t0)	/* t1 <-- uboot_end_data	*/
+	lw	t2, -8(t0)	/* t2 <-- uboot_end		*/
+	add	t1, s1		/* adjust pointers		*/
+	add	t2, s1
+
+	sub	t1, 4
+1:
+	addi	t1, 4
+	bltl	t1, t2, 1b
+	sw	zero, 0(t1)	/* delay slot			*/
+
+	move	a0, s0		/* a0 <-- gd			*/
+	la	t9, bootstrap_board_init_r
+	jr	t9
+	move	a1, s2		/* delay slot			*/
+
+	.end	relocate_code
+
+/*
+ * void copy_and_jump (void)
+ *
+ * This function copies/unzips the u-boot image and runs it.
+ * This "function" does not return
+ *
+*/
+	.globl	copy_and_jump
+	.ent	copy_and_jump
+copy_and_jump:
+
+	/* copy_uboot(CONFIG_SYS_MONITOR_BASE, payload_uncsize, payload_start, payload_size) */
+	li	a0, CONFIG_SYS_MONITOR_BASE
+	la	a1, payload_uncsize
+	lw	a1, 0(a1)
+	la	a2, payload_start
+	la	a3, payload_size
+	la	t9, copy_uboot
+	jalr t9
+	lw	a3, 0(a3)	/* delay slot */
+
+	li	t9, CONFIG_SYS_MONITOR_BASE
+	jr	t9
+	nop
+
+	.end copy_and_jump
+
+	/* Exception handlers.
+	 */
+romReserved:
+	b	romReserved
+
+romExcHandle:
+	b	romExcHandle
+#ifdef CONFIG_SYS_MIPS_MULTI_CPU
+/*
+ * Stop Slave CPUs
+ */
+ifx_mips_handler_cpux:
+       wait;
+       b ifx_mips_handler_cpux;
+       nop;
+#endif

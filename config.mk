@@ -136,7 +136,7 @@ else
 ARFLAGS = crv
 endif
 RELFLAGS= $(PLATFORM_RELFLAGS)
-DBGFLAGS= -g # -DDEBUG
+DBGFLAGS= -g
 OPTFLAGS= -Os #-fomit-frame-pointer
 ifndef LDSCRIPT
 #LDSCRIPT := $(TOPDIR)/board/$(BOARDDIR)/u-boot.lds.debug
@@ -144,6 +144,11 @@ ifeq ($(CONFIG_NAND_U_BOOT),y)
 LDSCRIPT := $(TOPDIR)/board/$(BOARDDIR)/u-boot-nand.lds
 else
 LDSCRIPT := $(TOPDIR)/board/$(BOARDDIR)/u-boot.lds
+endif
+endif
+ifeq ($(CONFIG_BOOTSTRAP),y)
+ifndef BOOTSTRAP_LDSCRIPT
+BOOTSTRAP_LDSCRIPT := $(TOPDIR)/board/$(BOARDDIR)/u-boot-bootstrap.lds
 endif
 endif
 OBJCFLAGS += --gap-fill=0xff
@@ -154,6 +159,10 @@ CPPFLAGS := $(DBGFLAGS) $(OPTFLAGS) $(RELFLAGS)		\
 	-D__KERNEL__
 ifneq ($(TEXT_BASE),)
 CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE)
+endif
+
+ifneq ($(CONFIG_BOOTSTRAP_TEXT_BASE),)
+CPPFLAGS += -DCONFIG_BOOTSTRAP_TEXT_BASE=$(CONFIG_BOOTSTRAP_TEXT_BASE)
 endif
 
 ifneq ($(RESET_VECTOR_ADDRESS),)
@@ -176,6 +185,7 @@ CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes
 endif
 
 CFLAGS += $(call cc-option,-fno-stack-protector)
+CFLAGS += $(call cc-option,-ffunction-sections)
 
 # avoid trigraph warnings while parsing pci.h (produced by NIOS gcc-2.9)
 # this option have to be placed behind -Wall -- that's why it is here
@@ -201,6 +211,13 @@ AFLAGS := $(AFLAGS_DEBUG) -D__ASSEMBLY__ $(CPPFLAGS)
 LDFLAGS += -Bstatic -T $(obj)u-boot.lds $(PLATFORM_LDFLAGS)
 ifneq ($(TEXT_BASE),)
 LDFLAGS += -Ttext $(TEXT_BASE)
+endif
+
+ifeq ($(CONFIG_BOOTSTRAP),y)
+BOOTSTRAP_LDFLAGS += -Bstatic -T $(obj)u-boot-bootstrap.lds $(PLATFORM_LDFLAGS)
+ifneq ($(CONFIG_BOOTSTRAP_TEXT_BASE),)
+BOOTSTRAP_LDFLAGS += -Ttext $(CONFIG_BOOTSTRAP_TEXT_BASE)
+endif
 endif
 
 # Location of a usable BFD library, where we define "usable" as

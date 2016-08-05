@@ -26,6 +26,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <configs/ifx-common.h>
 #include <environment.h>
 #include <linux/stddef.h>
 #include <malloc.h>

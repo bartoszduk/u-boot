@@ -3414,6 +3414,43 @@ vct_platinumavc_onenand_small_config: unconfig
 ## MIPS32 ifxcpe
 #########################################################################
 
+define arcadyan
+$(1)	: unconfig
+	@mkdir -p $(obj)include
+	@mkdir -p $(obj)board/arcadyan/
+	@[ -z "$$(findstring brnboot,$$@)" ] || \
+		{ echo "TEXT_BASE = 0x80002000" >$(obj)board/arcadyan/config.tmp ; \
+			echo "#define CONFIG_SYS_RAMBOOT" >>$(obj)include/config.h ; \
+			echo "#define CONFIG_SYS_BRNBOOT" >>$(obj)include/config.h ; \
+			$(XECHO) "... with brnboot configuration" ; \
+		}
+	@[ -z "$$(findstring ramboot,$$@)" ] || \
+		{ echo "TEXT_BASE = 0xA0400000" >$(obj)board/arcadyan/config.tmp ; \
+			echo "#define CONFIG_SYS_RAMBOOT" >>$(obj)include/config.h ; \
+			$(XECHO) "... with ramboot configuration" ; \
+		}
+	@if [ "$$(findstring flash,$$@)" ] ; then \
+               echo "#TEXT_BASE = 0xB0050000" >$(obj)board/arcadyan/config.tmp ; \
+		echo "#define CONFIG_BOOTSTRAP"  >>$(obj)include/config.h ; \
+		echo "#define CONFIG_USE_DDR_RAM"  >>$(obj)include/config.h ; \
+		echo "#define CONFIG_USE_DDR_RAM_CFG_psc166" >>$(obj)include/config.h ; \
+	fi
+	@$(MKCONFIG) -a $$(word 1,$$(subst _, ,$$@)) mips mips arcadyan "" danube
+endef
+
+$(eval $(call arcadyan, arv3527P%config))
+$(eval $(call arcadyan, arv4520PW%config))
+$(eval $(call arcadyan, arv452CPW%config))
+$(eval $(call arcadyan, arv4525PW%config))
+$(eval $(call arcadyan, arv4510PW%config))
+$(eval $(call arcadyan, arv4518PW%config))
+$(eval $(call arcadyan, arv4519PW%config))
+$(eval $(call arcadyan, arv7510PW22%config))
+$(eval $(call arcadyan, arv7518PW%config))
+$(eval $(call arcadyan, arv7525PW%config))
+$(eval $(call arcadyan, arv752DPW%config))
+$(eval $(call arcadyan, arv752DPW22%config))
+
 easy50712%config	: unconfig
 	@mkdir -p $(obj)include
 	@mkdir -p $(obj)board/infineon/easy50712

@@ -11,9 +11,9 @@
 #include "bootp.h"
 
 #define WELL_KNOWN_PORT	69		/* Well known TFTP port #		*/
-#define TIMEOUT		5000UL		/* Millisecs to timeout for lost pkt */
+#define TIMEOUT		10000UL		/* Millisecs to timeout for lost pkt */
 #ifndef	CONFIG_NET_RETRY_COUNT
-# define TIMEOUT_COUNT	10		/* # of timeouts before giving up  */
+# define TIMEOUT_COUNT	200		/* # of timeouts before giving up  */
 #else
 # define TIMEOUT_COUNT  (CONFIG_NET_RETRY_COUNT * 2)
 #endif

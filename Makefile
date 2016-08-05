@@ -447,7 +447,7 @@ $(obj)include/autoconf.mk: $(obj)include/config.h
 	set -e ; \
 	: Extract the config macros ; \
 	$(CPP) $(CFLAGS) -DDO_DEPS_ONLY -dM include/common.h | \
-		sed -n -f tools/scripts/define2mk.sed > $@.tmp && \
+		sed -n -f tools/scripts/define2mk.sed |sort > $@.tmp && \
 	mv $@.tmp $@
 
 #########################################################################
@@ -3370,7 +3370,7 @@ incaip_config: unconfig
 		{ echo "#define CPU_CLOCK_RATE 150000000" >>$(obj)include/config.h ; \
 		  $(XECHO) "... with 150MHz system clock" ; \
 		}
-	@$(MKCONFIG) -a $(call xtract_incaip,$@) mips mips incaip
+	@$(MKCONFIG) -a $(call xtract_incaip,$@) mips mips incaip infineon
 
 tb0229_config: unconfig
 	@$(MKCONFIG) $(@:_config=) mips mips tb0229
@@ -3409,6 +3409,53 @@ vct_platinumavc_onenand_small_config: unconfig
 		$(XECHO) "... stripped down image variant" ; \
 	fi
 	@$(MKCONFIG) -a vct mips mips vct micronas
+
+#########################################################################
+## MIPS32 ifxcpe
+#########################################################################
+
+easy50712%config	: unconfig
+	@mkdir -p $(obj)include
+	@mkdir -p $(obj)board/infineon/easy50712
+	@[ -z "$(findstring ramboot,$@)" ] || \
+		{ echo "TEXT_BASE = 0xA0400000" >$(obj)board/infineon/easy50712/config.tmp ; \
+			echo "#define CONFIG_SYS_RAMBOOT" >>$(obj)include/config.h ; \
+			$(XECHO) "... with ramboot configuration" ; \
+		}
+	@if [ "$(findstring _DDR,$@)" -a -z "$(findstring ramboot,$@)" ] ; then \
+		echo "#define CONFIG_USE_DDR_RAM"  >>$(obj)include/config.h ; \
+		echo "#define CONFIG_BOOTSTRAP"  >>$(obj)include/config.h ; \
+		DDR=$(subst DDR,,$(filter DDR%,$(subst _, ,$@))); \
+		case "$${DDR}" in \
+		111M|166M|e111M|e166M|promos400|samsung166|psc166) \
+			$(XECHO) "... with DDR RAM config $${DDR}" ; \
+			echo "#define CONFIG_USE_DDR_RAM_CFG_$${DDR}" >>$(obj)include/config.h ;; \
+		*)	$(XECHO) "... DDR RAM config \\\"$${DDR}\\\" unknown, use default"; \
+		esac; \
+	fi
+	@$(MKCONFIG) -a $(word 1,$(subst _, ,$@)) mips mips easy50712 infineon danube
+
+easy50812%config	: unconfig
+	@mkdir -p $(obj)include
+	@mkdir -p $(obj)board/infineon/easy50812
+	@[ -z "$(findstring ramboot,$@)" ] || \
+		{ echo "TEXT_BASE = 0xA0400000" >$(obj)board/infineon/easy50812/config.tmp ; \
+			echo "CONFIG_BOOTSTRAP = 0" >>$(obj)board/infineon/easy50812/config.tmp ; \
+			echo "#define CONFIG_SYS_RAMBOOT" >>$(obj)include/config.h ; \
+			$(XECHO) "... with ramboot configuration" ; \
+		}
+	@if [ "$(findstring _DDR,$@)" -a -z "$(findstring ramboot,$@)" ] ; then \
+		echo "#define CONFIG_USE_DDR_RAM"  >>$(obj)include/config.h ; \
+		echo "#define CONFIG_BOOTSTRAP"  >>$(obj)include/config.h ; \
+		DDR=$(subst DDR,,$(filter DDR%,$(subst _, ,$@))); \
+		case "$${DDR}" in \
+		111M|166M|e111M|e166M|promos400|samsung166|psc166) \
+			$(XECHO) "... with DDR RAM config $${DDR}" ; \
+			echo "#define CONFIG_USE_DDR_RAM_CFG_$${DDR}" >>$(obj)include/config.h ;; \
+		*)	$(XECHO) "... DDR RAM config \\\"$${DDR}\\\" unknown, use default"; \
+		esac; \
+	fi
+	@$(MKCONFIG) -a $(word 1,$(subst _, ,$@)) mips mips easy50812 infineon ar9
 
 #########################################################################
 ## MIPS32 AU1X00

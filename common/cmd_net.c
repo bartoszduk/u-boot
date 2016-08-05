@@ -51,7 +51,7 @@ int do_httpd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	httpd,	1,	1,	do_httpd,
-	"httpd\t- start webserver", ""
+	"httpd web server", ""
 );
 #endif
 

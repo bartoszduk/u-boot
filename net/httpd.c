@@ -11,15 +11,10 @@
 #include "uip-0.9/uip.h"
 #include "uip-0.9/uip_arp.h"
 
-
 #if defined(CONFIG_CMD_HTTPD)
-
-#define TIMEOUT		5
-
 static int arptimer = 0;
 
-void
-HttpdHandler (void)
+void HttpdHandler (void)
 {
 	int i;
 	for(i = 0; i < UIP_CONNS; i++) {
@@ -35,20 +30,9 @@ HttpdHandler (void)
 	}
 }
 
-#if 0
-static void
-HttpdTimeout (void)
-{
-	puts ("T ");
-	NetSetTimeout (TIMEOUT * 1000, HttpdTimeout);
-}
-#endif
-
-void
-HttpdStart (void)
+void HttpdStart (void)
 {
 	uip_init();
 	httpd_init();
 }
-
 #endif

@@ -375,7 +375,7 @@ int do_http_upgrade(const unsigned char *data, const ulong size)
 		return -1;
 	}
 	/* write the image to the flash */
-	puts("http ugrade ...\n");
+	puts("http upgrade ...\n");
 	sprintf(buf, "era ${kernel_addr} +0x%lx; cp.b ${ram_addr} ${kernel_addr} 0x%lx", size, size);
 	return run_command(buf, 0);
 }
@@ -388,16 +388,15 @@ int do_http_progress(const int state)
 		puts("http start\n");
 		break;
 		case HTTP_PROGRESS_TIMEOUT:
-		puts(".");
 		break;
 		case HTTP_PROGRESS_UPLOAD_READY:
 		puts("http upload ready\n");
 		break;
 		case HTTP_PROGRESS_UGRADE_READY:
-		puts("http ugrade ready\n");
+		puts("http upgrade ready\n");
 		break;
 		case HTTP_PROGRESS_UGRADE_FAILED:
-		puts("http ugrade failed\n");
+		puts("http upgrade failed\n");
 		break;
 	}
 	return 0;

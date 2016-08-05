@@ -1944,9 +1944,7 @@ ushort getenv_VLAN(char *var)
 }
 
 #if defined(CONFIG_CMD_HTTPD)
-
-void
-NetSendHttpd(void)
+void NetSendHttpd(void)
 {
 	volatile uchar *tmpbuf = NetTxPacket;
 	int i;
@@ -1961,21 +1959,18 @@ NetSendHttpd(void)
 	eth_send(NetTxPacket, uip_len);
 }
 
-#define BUF ((struct uip_eth_hdr *)&uip_buf[0])
-
-void
-NetReceiveHttpd(volatile uchar * inpkt, int len)
+void NetReceiveHttpd(volatile uchar * inpkt, int len)
 {
 	memcpy(uip_buf, (const void *)inpkt, len);
 	uip_len = len;
-	if(BUF->type == htons(UIP_ETHTYPE_IP)) {
+	if(((struct uip_eth_hdr *)&uip_buf[0])->type == htons(UIP_ETHTYPE_IP)) {
 		uip_arp_ipin();
 		uip_input();
 		if(uip_len > 0) {
 			uip_arp_out();
 			NetSendHttpd();
 		}
-	} else if(BUF->type == htons(UIP_ETHTYPE_ARP)) {
+	} else if(((struct uip_eth_hdr *)&uip_buf[0])->type == htons(UIP_ETHTYPE_ARP)) {
 		uip_arp_arpin();
 		if(uip_len > 0) {
 			NetSendHttpd();
@@ -1983,8 +1978,7 @@ NetReceiveHttpd(volatile uchar * inpkt, int len)
 	}
 }
 
-int
-NetLoopHttpd(void)
+int NetLoopHttpd(void)
 {
 	unsigned long long tout = 0;
 	bd_t *bd = gd->bd;
@@ -2055,16 +2049,24 @@ restart:
 	NetOurVLAN = getenv_VLAN("vlan");
 	NetOurNativeVLAN = getenv_VLAN("nvlan");
 
-	printf("starting httpd server from server %ld.%ld.%ld.%ld\n",
-		(bd->bi_ip_addr & 0xff000000) >> 24,
-		(bd->bi_ip_addr & 0x00ff0000) >> 16,
-		(bd->bi_ip_addr & 0x0000ff00) >> 8,
-		(bd->bi_ip_addr & 0x000000ff));
+	ip[0] = ((bd->bi_ip_addr & 0xffff0000) >> 16);
+	ip[1] = (bd->bi_ip_addr & 0x0000ffff);
+
+	printf("eth_addr: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		eaddr.addr[0],
+		eaddr.addr[1],
+		eaddr.addr[2],
+		eaddr.addr[3],
+		eaddr.addr[4],
+		eaddr.addr[5]);
+	printf("ip_addr: %d.%d.%d.%d\n",
+		(ip[0] >> 8) & 0xff,
+		ip[0] & 0xff,
+		(ip[1] >> 8) & 0xff,
+		ip[1] & 0xff);
 
 	HttpdStart();
 
-	ip[0] = ((bd->bi_ip_addr & 0xffff0000) >> 16);
-	ip[1] = (bd->bi_ip_addr & 0x0000ffff);
 	uip_sethostaddr(ip);
 
 	do_http_progress(HTTP_PROGRESS_START);
@@ -2085,10 +2087,12 @@ restart:
 
 		if (ctrlc()) {
 			eth_halt();
+			httpd_upload_complete = 0;
+			upload_running = 0;
+			https_running = 0;
 			puts ("\nAbort\n");
-			return (-1);
+			return -1;
 		}
-
 
 		if(!httpd_upload_complete)
 			continue;
@@ -2109,7 +2113,6 @@ restart:
 	NetBootFileXferSize = 0;
 	httpd_upload_complete = 0;
 	upload_running = 0;
-//	free(httpd_upload_data);
 
 	do_http_progress(HTTP_PROGRESS_UGRADE_FAILED);
 
@@ -2117,5 +2120,4 @@ restart:
 
 	return -1;
 }
-
 #endif

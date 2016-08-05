@@ -8,9 +8,6 @@
 #define HTTP_FILE		1
 #define HTTP_FIRMWARE		2
 
-#define PRINT(x) printf("%s", x)
-#define PRINTLN(x) printf("%s\n", x)
-
 extern unsigned long do_http_tmp_address(void);
 
 struct httpd_state *hs;
@@ -21,7 +18,7 @@ extern const struct fsdata_file file_flash_html;
 extern int httpd_upload_complete;
 extern unsigned char *httpd_upload_data;
 unsigned char *upload_data;
-extern ulong		NetBootFileXferSize;
+extern ulong NetBootFileXferSize;
 int upload_running = 0;
 
 #define ISO_G        0x47
@@ -47,6 +44,9 @@ static char eol[3] = { 0x0d, 0x0a, 0x00 };
 static char eol2[5] = { 0x0d, 0x0a, 0x0d, 0x0a, 0x00 };
 static char boundary[128];
 static int boundary_len = 0;
+static int status = 0;
+static int post_split = 0;
+static int len = 0;
 
 /* we use this so that we can do without the ctype library */
 #define is_digit(c)	((c) >= '0' && (c) <= '9')
@@ -120,8 +120,7 @@ httpd_appcall(void)
 					}
 				}
 
-				PRINT("request for file ");
-				PRINTLN(&uip_appdata[4]);
+				printf("request for file %s\n", &uip_appdata[4]);
 				if(uip_appdata[4] == ISO_slash &&
 					uip_appdata[5] == 0)
 				{
@@ -129,7 +128,7 @@ httpd_appcall(void)
 				} else {
 					if(!fs_open((const char *)&uip_appdata[4], &fsfile))
 					{
-						PRINTLN("couldn't open file");
+						printf("couldn't open file\n");
 						fs_open(file_404_html.name, &fsfile);
 					}
 				}
@@ -142,11 +141,11 @@ httpd_appcall(void)
 			{
 				unsigned char *start = (unsigned char*)uip_appdata;
 				char *clen = strstr((char *)start, "Content-Length:");
-				int len = 0;
-				unsigned char *next, *end;
-				unsigned char *boundary_start;
+				unsigned char *next = NULL, *end = NULL;
+				unsigned char *boundary_start = NULL;
 				int i;
 				uip_appdata[uip_len] = '\0';
+				post_split = 0;
 				if(clen)
 				{
 					clen += sizeof("Content-Length:");
@@ -192,28 +191,29 @@ httpd_appcall(void)
 				next = (unsigned char *)strstr((char *)boundary_start, "name=\"firmware\";");
 				if(!next)
 				{
-					uip_close();
-					return;
+					post_split = 1;
+					printf("http post split\n");
 				}
-				next = (unsigned char *)strstr((char *)next, eol2);
-				if(!next)
-				{
-					printf("could not find start of data\n");
-					uip_close();
-					return;
+				else {
+					next = (unsigned char *)strstr((char *)next, eol2);
+					if(!next)
+					{
+						printf("could not find start of data\n");
+						uip_close();
+						return;
+					}
+					next += 4;
+					hs->script = 0;
+					hs->state = HTTP_FIRMWARE;
+					hs->upload = uip_len - (next - start);
+					hs->upload_total = len - (int)(next - boundary_start);
+					hs->upload_total -= (strlen(boundary) + 6);
+					for(i = 0; i < hs->upload; i++)
+						upload_data[i] = next[i];
+					upload_data += (int)hs->upload;
+					uip_slen = 0;
+					status = 0;
 				}
-				next += 4;
-				hs->script = 0;
-				hs->state = HTTP_FIRMWARE;
-				hs->upload = uip_len - (next - start);
-				hs->upload_total = len - (int)(next - boundary_start);
-				hs->upload_total -= (strlen(boundary) + 6);
-				//printf("storing %d bytes at %p\n", (int)hs->upload, upload_data);
-				for(i = 0; i < hs->upload; i++)
-					upload_data[i] = next[i];
-				upload_data += (int)hs->upload;
-				printf("%d / %d\n", (int)hs->upload, hs->upload_total);
-				uip_slen = 0;
 				return;
 			}
 		}
@@ -223,24 +223,63 @@ httpd_appcall(void)
 			if(uip_newdata())
 			{
 				int i;
+
 				hs->count = 0;
 				uip_appdata[uip_len] = '\0';
-				hs->upload += uip_len;
-				//printf("storing %d bytes at %p\n", uip_len, upload_data);
-				printf("%d / %d\n", (int)hs->upload, hs->upload_total);
-				for(i = 0; i < uip_len; i++)
-					upload_data[i] = uip_appdata[i];
-				upload_data += uip_len;
-				uip_slen = 0;
-				if(hs->upload >= hs->upload_total)
-				{
-					upload_running = 1;
-					NetBootFileXferSize = hs->upload_total;
-					fs_open(file_flash_html.name, &fsfile);
+
+				if(post_split) {
+					unsigned char *start = (unsigned char*)uip_appdata;
+					unsigned char *next = NULL;
+
+					status = 0;
+					post_split = 0;
+
+					next = (unsigned char *)strstr((char *)start, "name=\"firmware\";");
+					if(!next)
+					{
+						uip_close();
+						return;
+					}
+
+					next = (unsigned char *)strstr((char *)next, eol2);
+					if(!next)
+					{
+						printf("could not find start of data\n");
+						uip_close();
+						return;
+					}
+					next += 4;
 					hs->script = 0;
-					hs->state = HTTP_FILE;
-					hs->dataptr = fsfile.data;
-					hs->count = fsfile.len;
+					hs->state = HTTP_FIRMWARE;
+					hs->upload = uip_len - (next - start);
+					hs->upload_total = len - (next - start);
+					for(i = 0; i < hs->upload; i++)
+						upload_data[i] = next[i];
+					upload_data += (int)hs->upload;
+					uip_slen = 0;
+				}
+				else {
+					hs->upload += uip_len;
+					for(i = 0; i < uip_len; i++)
+						upload_data[i] = uip_appdata[i];
+					upload_data += uip_len;
+					uip_slen = 0;
+					if(hs->upload >= hs->upload_total)
+					{
+						upload_running = 1;
+						NetBootFileXferSize = hs->upload_total;
+						fs_open(file_flash_html.name, &fsfile);
+						hs->script = 0;
+						hs->state = HTTP_FILE;
+						hs->dataptr = fsfile.data;
+						hs->count = fsfile.len;
+						status = 100;
+						printf("%d%%\n", status);
+					}
+					else if((hs->upload * 100) / hs->upload_total > status) {
+						status++;
+						printf("%d%%\n", status);
+					}
 				}
 			}
 		}
@@ -260,8 +299,6 @@ httpd_appcall(void)
 					if(upload_running)
 					{
 						httpd_upload_complete = 1;
-					//	for(i = 0; i < hs->upload_total; i++)
-					//		printf("%c", httpd_upload_data[i]);
 					}
 					uip_close();
 				}

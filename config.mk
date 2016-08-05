@@ -234,17 +234,47 @@ export	TEXT_BASE PLATFORM_CPPFLAGS PLATFORM_RELFLAGS CPPFLAGS CFLAGS AFLAGS
 
 #########################################################################
 
+ifndef KBUILD_VERBOSE
+  KBUILD_VERBOSE:=0
+endif
+ifeq ("$(origin V)", "command line")
+  KBUILD_VERBOSE:=$(V)
+endif
+ifeq (,$(findstring s,$(MAKEFLAGS)))
+  KBUILD_VERBOSE:=0
+endif
+
+ifneq ($(KBUILD_VERBOSE),0)
+  define MESSAGE
+    @printf " %s %s/%s\n" $(1) $(2) $(3)
+  endef
+else
+  define MESSAGE
+  endef
+endif
+
 # Allow boards to use custom optimize flags on a per dir/file basis
 BCURDIR := $(notdir $(CURDIR))
+
 $(obj)%.s:	%.S
+	$(call MESSAGE, [CPP],$(subst $(SRCTREE)/,,$(CURDIR)),$<)
+	#echo $(CPP) $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $<
 	$(CPP) $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $<
 $(obj)%.o:	%.S
+	$(call MESSAGE, [AS], $(subst $(SRCTREE)/,,$(CURDIR)),$<)
+	#echo $(CC)  $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $< -c
 	$(CC)  $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $< -c
 $(obj)%.o:	%.c
+	$(call MESSAGE, [CC], $(subst $(SRCTREE)/,,$(CURDIR)),$<)
+	#echo $(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
 	$(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
 $(obj)%.i:	%.c
+	$(call MESSAGE, [CPP],$(subst $(SRCTREE)/,,$(CURDIR)),$<)
+	#echo $(CPP) $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
 	$(CPP) $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
 $(obj)%.s:	%.c
+	$(call MESSAGE, [CC], $(subst $(SRCTREE)/,,$(CURDIR)),$<)
+	#echo $(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c -S
 	$(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c -S
 
 #########################################################################

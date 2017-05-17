@@ -10,7 +10,9 @@
 #define L1_CACHE_SHIFT		CONFIG_MIPS_L1_CACHE_SHIFT
 #define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
 
+#ifndef ARCH_DMA_MINALIGN
 #define ARCH_DMA_MINALIGN	(L1_CACHE_BYTES)
+#endif
 
 /*
  * CONFIG_SYS_CACHELINE_SIZE is still used in various drivers primarily for

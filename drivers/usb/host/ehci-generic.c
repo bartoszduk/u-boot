@@ -6,9 +6,10 @@
 
 #include <common.h>
 #include <clk.h>
+#include <dm.h>
+#include <generic-phy.h>
 #include <reset.h>
 #include <asm/io.h>
-#include <dm.h>
 #include "ehci.h"
 
 /*
@@ -25,6 +26,21 @@ static int ehci_usb_probe(struct udevice *dev)
 	struct ehci_hccr *hccr;
 	struct ehci_hcor *hcor;
 	int i;
+
+#if defined(CONFIG_PHY)
+	for (i = 0; ; i++) {
+		struct phy phy;
+		int ret;
+
+		ret = generic_phy_get_by_index(dev, i, &phy);
+		if (ret < 0)
+			break;
+		if (generic_phy_init(&phy))
+			printf("failed to init phy %d\n", i);
+		if (generic_phy_power_on(&phy))
+			printf("failed to power on phy %d\n", i);
+	}
+#endif
 
 	for (i = 0; ; i++) {
 		struct clk clk;

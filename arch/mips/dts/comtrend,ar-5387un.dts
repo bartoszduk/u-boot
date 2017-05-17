@@ -21,6 +21,10 @@
 	};
 };
 
+&ehci {
+	status = "okay";
+};
+
 &leds {
 	status = "okay";
 
@@ -53,5 +57,9 @@
 
 &uart0 {
 	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbh {
 	status = "okay";
 };

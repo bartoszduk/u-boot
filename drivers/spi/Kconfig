@@ -40,6 +40,27 @@ config ATMEL_SPI
 	  many AT32 (AVR32) and AT91 (ARM) chips. This driver can be
 	  used to access the SPI Flash, such as AT25DF321.
 
+choice
+	prompt "BCM63xx SPI driver"
+	depends on ARCH_BMIPS
+	optional
+
+config BCM6338_SPI
+	bool "BCM6338 SPI driver"
+	help
+	  Enable the BCM6338 SPI driver. This driver can be used to
+	  access the SPI NOR flash on platforms embedding this Broadcom
+	  SPI core.
+
+config BCM6358_SPI
+	bool "BCM6358 SPI driver"
+	help
+	  Enable the BCM6358 SPI driver. This driver can be used to
+	  access the SPI NOR flash on platforms embedding this Broadcom
+	  SPI core.
+
+endchoice
+
 config CADENCE_QSPI
 	bool "Cadence QSPI driver"
 	help

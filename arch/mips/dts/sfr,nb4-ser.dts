@@ -50,6 +50,22 @@
 	};
 };
 
+&enet0 {
+	status = "okay";
+};
+
+&enet0phy {
+	brcm,internal-phy;
+};
+
+&enet1 {
+	status = "okay";
+};
+
+&enet1phy {
+	full-duplex;
+};
+
 &gpio0 {
 	status = "okay";
 };

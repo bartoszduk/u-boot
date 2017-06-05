@@ -40,6 +40,14 @@
 	};
 };
 
+&enet0 {
+	status = "okay";
+};
+
+&enet0phy {
+	full-duplex;
+};
+
 &gpio {
 	status = "okay";
 };

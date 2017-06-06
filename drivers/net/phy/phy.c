@@ -602,6 +602,7 @@ static struct phy_driver *get_phy_driver(struct phy_device *phydev,
 
 	list_for_each(entry, &phy_drivers) {
 		drv = list_entry(entry, struct phy_driver, list);
+		printf("%s: drv_uid=%x mask=%x phy_id=%x\n", __func__, drv->uid, drv->mask, phy_id);
 		if ((drv->uid & drv->mask) == (phy_id & drv->mask))
 			return drv;
 	}

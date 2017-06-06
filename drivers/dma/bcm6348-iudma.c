@@ -221,7 +221,7 @@ static int bcm6348_iudma_request(struct dma *dma)
 	if (!priv->ch_priv[dma->id])
 		return -ENOMEM;
 	ch_priv = priv->ch_priv[dma->id];
-#if 0
+#if DEBUG
 	printf("%s: ch=%lu ch_priv=%p\n", __func__, dma->id, ch_priv);
 #endif
 
@@ -233,7 +233,7 @@ static int bcm6348_iudma_request(struct dma *dma)
 	ch_priv->dma_ring = malloc_cache_aligned(sizeof(struct bcm6348_dma_desc) * ch_priv->dma_ring_size);
 	if (!ch_priv->dma_ring)
 		return -ENOMEM;
-#if 0
+#if DEBUG
 	printf("%s: ch=%lu dma_ring_size=%u dma_ring=%p\n", __func__, dma->id, ch_priv->dma_ring_size, ch_priv->dma_ring);
 #endif
 
@@ -242,7 +242,7 @@ static int bcm6348_iudma_request(struct dma *dma)
 	ch_priv->dma_buff = malloc_cache_aligned(ch_priv->dma_buff_size);
 	if (!ch_priv->dma_buff)
 		return -ENOMEM;
-#if 0
+#if DEBUG
 	printf("%s: ch=%lu dma_buff_size=%u dma_buff=%p\n", __func__, dma->id, ch_priv->dma_buff_size, ch_priv->dma_buff);
 #endif
 	memset(ch_priv->dma_buff, 0, ch_priv->dma_buff_size);
@@ -264,7 +264,7 @@ static int bcm6348_iudma_request(struct dma *dma)
 		if (i == ch_priv->dma_ring_size - 1)
 			dma_desc->status |= DMAD_ST_WRAP_MASK;
 
-#if 0
+#if DEBUG
 		printf("%s: ch=%lu ring=%u status=%04x len=%u addr=%08x\n", __func__, dma->id, i, dma_desc->status, dma_desc->length, dma_desc->address);
 #endif
 
@@ -325,11 +325,7 @@ static int bcm6348_iudma_receive(struct dma *dma, void **dst)
 	dma_desc += ch_priv->desc_id * (sizeof(struct bcm6348_dma_desc));
 
 	/* invalidate cache data */
-#if 0
-	invalidate_dcache_range((ulong)dma_desc, (ulong)(dma_desc + sizeof(struct bcm6348_dma_desc)));
-#else
 	invalidate_dcache_range((ulong)dma_desc, ALIGN_END_ADDR(struct bcm6348_dma_desc, dma_desc, 1));
-#endif
 
 	/* check dma own */
 	if (dma_desc->status & DMAD_ST_OWN_MASK)
@@ -340,12 +336,7 @@ static int bcm6348_iudma_receive(struct dma *dma, void **dst)
 		return -EINVAL;
 
 	/* get dma buff descriptor address */
-#if 0
-	dma_buff = ch_priv->dma_buff;
-	dma_buff += ch_priv->desc_id * PKTSIZE_ALIGN;
-#else
 	dma_buff = phys_to_virt(dma_desc->address);
-#endif
 
 	/* invalidate cache data */
 	invalidate_dcache_range((ulong)dma_buff, (ulong)(dma_buff + PKTSIZE_ALIGN));
@@ -367,11 +358,7 @@ static int bcm6348_iudma_receive(struct dma *dma, void **dst)
 	wmb();
 
 	/* flush cache */
-#if 0
-	flush_dcache_range((ulong)dma_desc, (ulong)dma_desc + sizeof(struct bcm6348_dma_desc));
-#else
 	flush_dcache_range((ulong)dma_desc, ALIGN_END_ADDR(struct bcm6348_dma_desc, dma_desc, 1));
-#endif
 
 	/* set flow control buffer alloc */
 	writel_be(1, priv->base + DMA_FLOWC_ALLOC_REG(dma->id));
@@ -422,21 +409,12 @@ static int bcm6348_iudma_send(struct dma *dma, void *src, size_t len)
 	wmb();
 
 	/* flush cache */
-#if 0
-	flush_dcache_range((ulong)dma_desc, (ulong)dma_desc + sizeof(struct bcm6348_dma_desc));
-#else
 	flush_dcache_range((ulong)dma_desc, ALIGN_END_ADDR(struct bcm6348_dma_desc, dma_desc, 1));
-#endif
 
 	/* get dma buff descriptor address */
-#if 0
-	dma_buff = ch_priv->dma_buff;
-	dma_buff += ch_priv->desc_id * PKTSIZE_ALIGN;
-#else
 	dma_buff = phys_to_virt(dma_desc->address);
-#endif
 
-#if 0
+#if DEBUG
 	print_buffer((ulong)dma_buff, dma_buff, 1, PKTSIZE_ALIGN, 0);
 #endif
 
@@ -455,11 +433,7 @@ static int bcm6348_iudma_send(struct dma *dma, void *src, size_t len)
 	/* poll dma status */
 	do {
 		/* invalidate cache */
-#if 0
-		invalidate_dcache_range((ulong)dma_desc, dma_desc + sizeof(struct bcm6348_dma_desc));
-#else
 		invalidate_dcache_range((ulong)dma_desc, ALIGN_END_ADDR(struct bcm6348_dma_desc, dma_desc, 1));
-#endif
 
 		if (!(dma_desc->status & DMAD_ST_OWN_MASK))
 			break;

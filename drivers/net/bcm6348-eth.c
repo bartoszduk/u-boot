@@ -239,7 +239,7 @@ static int bcm6348_eth_start(struct udevice *dev)
 	}
 
 	/* wait for phy to complete reset */
-	mdelay(CONFIG_PHY_RESET_DELAY);
+	mdelay(1000);
 
 	/* configure supported modes */
 	phydev->supported = (SUPPORTED_10baseT_Half |
@@ -335,7 +335,7 @@ static const struct udevice_id bcm6348_eth_ids[] = {
 	{ /* sentinel */ }
 };
 
-static int bcm6348_mdio_op(void __iomem *base, unsigned int data)
+static int bcm6348_mdio_op(void __iomem *base, uint32_t data)
 {
 	uint32_t timeout = ETH_TIMEOUT_US;
 
@@ -349,14 +349,42 @@ static int bcm6348_mdio_op(void __iomem *base, unsigned int data)
 	/* wait for mii interrupt */
 	do {
 		uint32_t val = readl_be(base + ETH_IR_REG);
+		rmb();
 
-		if (!(val & ETH_IR_MII_MASK))
+		if (val & ETH_IR_MII_MASK)
 			break;
 
 		udelay(1);
 	} while(timeout--);
 
+	writel_be(ETH_IR_MII_MASK, base + ETH_IR_REG);
+
 	return !timeout;
+}
+
+static int bcm6348_mdio_read(struct mii_dev *bus, int addr, int devaddr,
+			     int reg)
+{
+	void __iomem *base = bus->priv;
+	uint32_t val;
+
+	val = MII_DAT_OP_READ;
+	val |= (reg << MII_DAT_REG_SHIFT) & MII_DAT_REG_MASK;
+	val |= (0x2 << MII_DAT_TA_SHIFT) & MII_DAT_TA_MASK;
+	val |= (addr << MII_DAT_PHY_SHIFT) & MII_DAT_PHY_MASK;
+
+	if (bcm6348_mdio_op(base, val)) {
+		printf("%s: bcm6348_mdio_op timeout\n", __func__);
+		return -EINVAL;
+	}
+
+	val = readl_be(base + MII_DAT_REG) & MII_DAT_DATA_MASK;
+	rmb();
+	val >>= MII_DAT_DATA_SHIFT;
+
+	printf("%s: addr=%d reg=%x val=%x\n", __func__, addr, reg, val);
+
+	return val;
 }
 
 static int bcm6348_mdio_write(struct mii_dev *bus, int addr, int dev_addr,
@@ -371,32 +399,17 @@ static int bcm6348_mdio_write(struct mii_dev *bus, int addr, int dev_addr,
 	val |= (addr << MII_DAT_PHY_SHIFT) & MII_DAT_PHY_MASK;
 	val |= (value << MII_DAT_DATA_SHIFT) & MII_DAT_DATA_MASK;
 
+	printf("%s: addr=%d reg=%x val=%x write=%x\n", __func__, addr, reg, val, value);
+
 	return bcm6348_mdio_op(base, val);
-}
-
-static int bcm6348_mdio_read(struct mii_dev *bus, int addr, int devaddr,
-			     int reg)
-{
-	void __iomem *base = bus->priv;
-	uint32_t val;
-
-	val = MII_DAT_OP_READ;
-	val |= (reg << MII_DAT_REG_SHIFT) & MII_DAT_REG_MASK;
-	val |= (0x2 << MII_DAT_TA_SHIFT) & MII_DAT_TA_MASK;
-	val |= (addr << MII_DAT_PHY_SHIFT) & MII_DAT_PHY_MASK;
-
-	bcm6348_mdio_op(base, val);
-
-	val = readl_be(base + MII_DAT_REG) & MII_DAT_DATA_MASK;
-	val >>= MII_DAT_DATA_SHIFT;
-
-	return val;
 }
 
 static int bcm6348_mdio_init(const char *name, void __iomem *base,
 			     int phyid)
 {
 	struct mii_dev *bus;
+
+	printf("%s: name=%s base=%p phyid=%d\n", __func__, name, base, phyid);
 
 	bus = mdio_alloc();
 	if (!bus) {
@@ -413,6 +426,8 @@ static int bcm6348_mdio_init(const char *name, void __iomem *base,
 	 * the mdio read operation return 0 instead of 0xffff
 	 * if a slave is not present on hw */
 	bus->phy_mask = ~(1 << phyid);
+
+	printf("%s: phy_mask=%x\n", __func__, bus->phy_mask);
 
 	return mdio_register(bus);
 }
@@ -504,8 +519,8 @@ static int bcm6348_eth_probe(struct udevice *dev)
 	/* turn on mdc clock */
 	writel_be(0x1f << MII_SC_MDCFREQDIV_SHIFT, priv->base + MII_SC_REG);
 
-	/* set mib counters to self-clear when read */
-	setbits_be32(priv->base + MIB_CTL_REG, MIB_CTL_RDCLEAR_MASK);
+	/* set mib counters to not clear when read */
+	clrbits_be32(priv->base + MIB_CTL_REG, MIB_CTL_RDCLEAR_MASK);
 
 	/* initialize perfect match registers */
 	for (i = 0; i < ETH_PM_CNT; i++) {

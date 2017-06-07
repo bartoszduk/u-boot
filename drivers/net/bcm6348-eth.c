@@ -226,9 +226,15 @@ static int bcm6348_eth_start(struct udevice *dev)
 	struct bcm6348_eth_priv *priv = dev_get_priv(dev);
 	struct mii_dev *mii;
 	struct phy_device *phydev = NULL;
+	int i;
 
 	printf("%s: priv=%p\n", __func__, priv);
 
+	/* zero mib counters */
+	for (i = 0; i < MIB_REG_CNT; i++)
+		writel_be(0, MIB_REG(i));
+
+	/* get mii bus */
 	mii = miiphy_get_dev_by_name(dev->name);
 
 	/* find & connect phy */

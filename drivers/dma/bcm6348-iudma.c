@@ -280,6 +280,9 @@ static int bcm6348_iudma_request(struct dma *dma)
 			   sizeof(struct bcm6348_dma_desc) *
 			   ch_priv->dma_ring_size);
 
+	if (bcm6348_iudma_chan_is_rx(dma->id))
+		writel_be(DMA_FLOWC_ALLOC_FORCE_MASK, DMA_FLOWC_ALLOC_REG(dma->id));
+
 	/* clear sram */
 	writel_be(0, priv->sram + DMAS_STATE_DATA_REG(dma->id));
 	writel_be(0, priv->sram + DMAS_DESC_LEN_STATUS_REG(dma->id));
@@ -294,7 +297,9 @@ static int bcm6348_iudma_request(struct dma *dma)
 		setbits_be32(priv->base + DMA_CFG_REG, DMA_CFG_FLOWC_ENABLE(dma->id));
 		writel_be(DMA_FLOWC_THR_LO_MASK, priv->base + DMA_FLOWC_THR_LO_REG(dma->id));
 		writel_be(DMA_FLOWC_THR_HI_MASK, priv->base + DMA_FLOWC_THR_HI_REG(dma->id));
+#if 0
 		writel_be(0, priv->base + DMA_FLOWC_ALLOC_REG(dma->id));
+#endif
 	}
 
 	/* set dma max burst */
@@ -303,6 +308,8 @@ static int bcm6348_iudma_request(struct dma *dma)
 	/* clear interrupts */
 	writel_be(DMAC_IR_DONE_MASK, priv->chan + DMAC_IR_ST_REG(dma->id));
 	writel_be(0, priv->chan + DMAC_IR_EN_REG(dma->id));
+
+	wmb();
 
 	return 0;
 }
@@ -335,6 +342,8 @@ static int bcm6348_iudma_receive(struct dma *dma, void **dst)
 	if (!(dma_desc->status & DMAD_ST_EOP_MASK))
 		return -EINVAL;
 
+	printf("%s: ch=%lu priv=%p ch_priv=%p dst=%p\n", __func__, dma->id, priv, ch_priv, dst);
+
 	/* get dma buff descriptor address */
 	dma_buff = phys_to_virt(dma_desc->address);
 
@@ -345,7 +354,7 @@ static int bcm6348_iudma_receive(struct dma *dma, void **dst)
 	dst = dma_buff;
 	ret = dma_desc->length;
 
-	printf("%s: received packet %u\n", __func__, ch_priv->desc_id);
+	printf("%s: received packet %u (%u bytes)\n", __func__, ch_priv->desc_id, dma_desc->length);
 	print_buffer((ulong)dma_buff, dma_buff, 1, dma_desc->length, 0);
 
 	/* reinit dma descriptor */

@@ -52,18 +52,26 @@
 
 &enet0 {
 	status = "okay";
-};
+	phy = <&enet0phy>;
+	phy-mode = "mii";
 
-&enet0phy {
-	brcm,internal-phy;
+	enet0phy: ethernet-phy@0 {
+		reg = <0>;
+		max-speed = <100>;
+		brcm,internal-phy;
+	};
 };
 
 &enet1 {
 	status = "okay";
-};
+	phy = <&enet1phy>;
+	phy-mode = "mii";
 
-&enet1phy {
-	full-duplex;
+	enet1phy: fixed-link {
+		speed = <100>;
+		full-duplex;
+		pause;
+	};
 };
 
 &gpio0 {

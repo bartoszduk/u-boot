@@ -46,6 +46,7 @@ config BCM6348_ETH
 	select DMA
 	select BCM6348_IUDMA
 	select PHYLIB
+	select PHY_FIXED
 	help
 	  This driver supports the BCM6348 Ethernet MAC.
 

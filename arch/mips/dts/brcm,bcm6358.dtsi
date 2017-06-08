@@ -176,22 +176,8 @@
 			       <&iudma BCM6358_DMA_ENET0_TX>;
 			dma-names = "rx",
 				    "tx";
-			phy = <&enet0phy>;
-			phy-mode = "mii";
 
 			status = "disabled";
-
-			enet0mdio: mdio {
-				compatible = "brcm,bcm6348-mdio";
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				enet0phy: ethernet-phy@0 {
-					compatible = "ethernet-phy-ieee802.3-c22";
-					reg = <0>;
-					max-speed = <100>;
-				};
-			};
 		};
 
 		enet1: ethernet@fffe4800 {
@@ -204,22 +190,8 @@
 			       <&iudma BCM6358_DMA_ENET1_TX>;
 			dma-names = "rx",
 				    "tx";
-			phy = <&enet1phy>;
-			phy-mode = "mii";
 
 			status = "disabled";
-
-			enet1mdio: mdio {
-				compatible = "brcm,bcm6348-mdio";
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				enet1phy: ethernet-phy@0 {
-					compatible = "ethernet-phy-ieee802.3-c22";
-					reg = <0>;
-					max-speed = <100>;
-				};
-			};
 		};
 
 		iudma: dma-controller@fffe5000 {

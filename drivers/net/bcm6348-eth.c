@@ -109,9 +109,8 @@ struct bcm6348_eth_priv {
 	struct dma rx_dma;
 	struct dma tx_dma;
 	/* PHY */
-	int phyid;
-	phy_interface_t phyif;
-	struct phy_device *phydev;
+	int phy_id;
+	struct phy_device *phy_dev;
 };
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -197,14 +196,6 @@ static int bcm6348_eth_adjust_link(struct udevice *dev, struct phy_device *phyde
 {
 	struct bcm6348_eth_priv *priv = dev_get_priv(dev);
 
-	/* check link */
-#if 0
-	if (!phydev->link) {
-		printf("%s: no link (%s)\n", __func__, phydev->dev->name);
-		return -EINVAL;
-	}
-#endif
-
 	/* mac duplex parameters */
 	if (phydev->duplex)
 		setbits_be32(priv->base + ETH_TXCTL_REG, ETH_TXCTL_FD_MASK);
@@ -229,45 +220,22 @@ static int bcm6348_eth_start(struct udevice *dev)
 
 	printf("%s: priv=%p\n", __func__, priv);
 
+	ret = phy_startup(priv->phy_dev);
+	if (ret) {
+		error("could not initialize phy\n");
+		return ret;
+	}
+
+	if (!priv->phy_dev->link) {
+		error("no phy link\n");
+		return -EIO;
+	}
+
+	bcm6348_eth_adjust_link(dev, priv->phy_dev);
+
 	/* zero mib counters */
 	for (i = 0; i < MIB_REG_CNT; i++)
 		writel_be(0, MIB_REG(i));
-
-#if 0
-	struct mii_dev *mii;
-	struct phy_device *phydev = NULL;
-
-	/* get mii bus */
-	mii = miiphy_get_dev_by_name(dev->name);
-
-	/* find & connect phy */
-	phydev = phy_connect(mii, priv->phyid, dev, priv->phyif);
-	if (!phydev) {
-		printf("%s: could not attach to phy\n", __func__);
-		return 0;
-	}
-
-	/* wait for phy to complete reset */
-	mdelay(1000);
-
-	/* configure supported modes */
-	phydev->supported = (SUPPORTED_10baseT_Half |
-			     SUPPORTED_10baseT_Full |
-			     SUPPORTED_100baseT_Half |
-			     SUPPORTED_100baseT_Full |
-			     SUPPORTED_Autoneg |
-			     SUPPORTED_Pause |
-			     SUPPORTED_MII);
-	phydev->advertising = phydev->supported;
-
-	/* start and update link status of phy */
-	phy_startup(phydev);
-
-	/* adjust mac with phy link status */
-	int ret = bcm6348_eth_adjust_link(dev, phydev);
-	if (ret)
-		return ret;
-#endif
 
 	/* enable rx flow control */
 	setbits_be32(priv->base + ETH_RXCFG_REG, ETH_RXCFG_ENFLOW_MASK);
@@ -288,19 +256,6 @@ static int bcm6348_eth_start(struct udevice *dev)
 	/* enable dma rx channel */
 	dma_enable(&priv->rx_dma);
 
-	/* Start up the PHY */
-	ret = phy_startup(priv->phydev);
-	if (ret) {
-		debug("Could not initialize PHY %s\n",
-		      priv->phydev->dev->name);
-		return ret;
-	}
-
-	bcm6348_eth_adjust_link(dev, priv->phydev);
-
-	if (!priv->phydev->link)
-		return -EIO;
-
 	return 0;
 }
 
@@ -316,8 +271,8 @@ static void bcm6348_eth_stop(struct udevice *dev)
 
 static int bcm6348_eth_write_hwaddr(struct udevice *dev)
 {
-	struct bcm6348_eth_priv *priv = dev_get_priv(dev);
 	struct eth_pdata *pdata = dev_get_platdata(dev);
+	struct bcm6348_eth_priv *priv = dev_get_priv(dev);
 	bool running = false;
 
 	/* check if emac is running */
@@ -365,20 +320,16 @@ static int bcm6348_mdio_op(void __iomem *base, uint32_t data)
 
 	/* issue mii op */
 	writel_be(data, base + MII_DAT_REG);
-	wmb();
 
 	/* wait for mii interrupt */
 	do {
 		uint32_t val = readl_be(base + ETH_IR_REG);
-		rmb();
 
 		if (val & ETH_IR_MII_MASK)
 			break;
 
 		udelay(1);
 	} while(timeout--);
-
-	writel_be(ETH_IR_MII_MASK, base + ETH_IR_REG);
 
 	return !timeout;
 }
@@ -395,15 +346,12 @@ static int bcm6348_mdio_read(struct mii_dev *bus, int addr, int devaddr,
 	val |= (addr << MII_DAT_PHY_SHIFT) & MII_DAT_PHY_MASK;
 
 	if (bcm6348_mdio_op(base, val)) {
-		printf("%s: bcm6348_mdio_op timeout\n", __func__);
+		error("%s: timeout\n", __func__);
 		return -EINVAL;
 	}
 
 	val = readl_be(base + MII_DAT_REG) & MII_DAT_DATA_MASK;
-	rmb();
 	val >>= MII_DAT_DATA_SHIFT;
-
-	printf("%s: addr=%d reg=%x val=%x\n", __func__, addr, reg, val);
 
 	return val;
 }
@@ -420,17 +368,17 @@ static int bcm6348_mdio_write(struct mii_dev *bus, int addr, int dev_addr,
 	val |= (addr << MII_DAT_PHY_SHIFT) & MII_DAT_PHY_MASK;
 	val |= (value << MII_DAT_DATA_SHIFT) & MII_DAT_DATA_MASK;
 
-	printf("%s: addr=%d reg=%x val=%x write=%x\n", __func__, addr, reg, val, value);
+	if (bcm6348_mdio_op(base, val)) {
+		error("%s: timeout\n", __func__);
+		return -EINVAL;
+	}
 
-	return bcm6348_mdio_op(base, val);
+	return 0;
 }
 
-static int bcm6348_mdio_init(const char *name, void __iomem *base,
-			     int phyid)
+static int bcm6348_mdio_init(const char *name, void __iomem *base)
 {
 	struct mii_dev *bus;
-
-	printf("%s: name=%s base=%p phyid=%d\n", __func__, name, base, phyid);
 
 	bus = mdio_alloc();
 	if (!bus) {
@@ -443,15 +391,6 @@ static int bcm6348_mdio_init(const char *name, void __iomem *base,
 	bus->priv = base;
 	snprintf(bus->name, sizeof(bus->name), "%s", name);
 
-#if 0
-	/* only probe bus where we think the PHY is, because
-	 * the mdio read operation return 0 instead of 0xffff
-	 * if a slave is not present on hw */
-	bus->phy_mask = ~(1 << phyid);
-#endif
-
-	printf("%s: phy_mask=%x\n", __func__, bus->phy_mask);
-
 	return mdio_register(bus);
 }
 
@@ -460,35 +399,28 @@ static int bcm6348_phy_init(struct udevice *dev)
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 	struct bcm6348_eth_priv *priv = dev_get_priv(dev);
 	struct mii_dev *bus;
-	struct phy_device *phydev;
-	unsigned int mask = 0xffffffff;
 
 	/* get mii bus */
 	bus = miiphy_get_dev_by_name(dev->name);
 
-	/* find phy by mask */
-	if (priv->phyid)
-		mask = 1 << priv->phyid;
-
-	phydev = phy_find_by_mask(bus, mask, pdata->phy_interface);
-	if (!phydev)
+	/* phy connect */
+	priv->phy_dev = phy_connect(bus, priv->phy_id, dev, pdata->phy_interface);
+	if (!priv->phy_dev) {
+		printf("%s: no phy device\n", __func__);
 		return -ENODEV;
+	}
 
-	/* connect and config phy */
-	phy_connect_dev(phydev, dev);
-
-	/* configure supported modes */
-	phydev->supported = (SUPPORTED_10baseT_Half |
+	priv->phy_dev->supported = (SUPPORTED_10baseT_Half |
 			     SUPPORTED_10baseT_Full |
 			     SUPPORTED_100baseT_Half |
 			     SUPPORTED_100baseT_Full |
 			     SUPPORTED_Autoneg |
 			     SUPPORTED_Pause |
 			     SUPPORTED_MII);
-	phydev->advertising = phydev->supported;
+	priv->phy_dev->advertising = priv->phy_dev->supported;
 
-	priv->phydev = phydev;
-	phy_config(phydev);
+	/* phy config */
+	phy_config(priv->phy_dev);
 
 	return 0;
 }
@@ -509,15 +441,19 @@ static int bcm6348_eth_probe(struct udevice *dev)
 		return -EINVAL;
 
 	/* get phy mode */
-	pdata->phy_interface = -1;
+	pdata->phy_interface = PHY_INTERFACE_MODE_NONE;
 	phy_mode = fdt_getprop(blob, node, "phy-mode", NULL);
 	if (phy_mode)
 		pdata->phy_interface = phy_get_interface_by_name(phy_mode);
-	if (pdata->phy_interface == -1) {
-		error("%s: invalid phy interface '%s'\n", __func__, phy_mode);
+	if (pdata->phy_interface == PHY_INTERFACE_MODE_NONE)
+		return -ENODEV;
+
+	/* get phy */
+	phy_node = fdtdec_lookup_phandle(blob, node, "phy");
+	if (phy_node >= 0)
+		priv->phy_id = fdtdec_get_int(blob, phy_node, "reg", -1);
+	else
 		return -EINVAL;
-	}
-	priv->phyif = pdata->phy_interface;
 
 	/* get dma channels */
 	ret = dma_get_by_name(dev, "tx", &priv->tx_dma);
@@ -554,13 +490,6 @@ static int bcm6348_eth_probe(struct udevice *dev)
 		reset_free(&reset);
 	}
 
-	/* get phy */
-	phy_node = fdtdec_lookup_phandle(blob, node, "phy");
-	if (phy_node > 0)
-		priv->phyid = fdtdec_get_int(blob, phy_node, "reg", 0);
-	else
-		return -ENODEV;
-
 	/* get base addr */
 	priv->base = ioremap(addr, 0);
 	pdata->iobase = (phys_addr_t) priv->base;
@@ -590,7 +519,7 @@ static int bcm6348_eth_probe(struct udevice *dev)
 	}
 
 	/* init mii bus */
-	ret = bcm6348_mdio_init(dev->name, priv->base, priv->phyid);
+	ret = bcm6348_mdio_init(dev->name, priv->base);
 	if (ret)
 		return ret;
 

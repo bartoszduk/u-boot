@@ -470,6 +470,9 @@ int phy_init(void)
 #ifdef CONFIG_PHY_ATHEROS
 	phy_atheros_init();
 #endif
+#ifdef CONFIG_PHY_BCM63XX
+	phy_bcm63xx_init();
+#endif
 #ifdef CONFIG_PHY_BROADCOM
 	phy_broadcom_init();
 #endif
@@ -599,6 +602,7 @@ static struct phy_driver *get_phy_driver(struct phy_device *phydev,
 
 	list_for_each(entry, &phy_drivers) {
 		drv = list_entry(entry, struct phy_driver, list);
+		printf("%s: drv_uid=%x mask=%x phy_id=%x\n", __func__, drv->uid, drv->mask, phy_id);
 		if ((drv->uid & drv->mask) == (phy_id & drv->mask))
 			return drv;
 	}

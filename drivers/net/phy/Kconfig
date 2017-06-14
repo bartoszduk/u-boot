@@ -37,6 +37,9 @@ config PHY_AQUANTIA
 config PHY_ATHEROS
 	bool "Atheros Ethernet PHYs support"
 
+config PHY_BCM63XX
+	bool "BCM63xx Ethernet PHYs support"
+
 config PHY_BROADCOM
 	bool "Broadcom Ethernet PHYs support"
 

@@ -40,6 +40,18 @@
 	};
 };
 
+&enet0 {
+	status = "okay";
+	phy = <&enet0phy>;
+	phy-mode = "mii";
+
+	enet0phy: fixed-link {
+		speed = <100>;
+		full-duplex;
+		pause;
+	};
+};
+
 &gpio {
 	status = "okay";
 };

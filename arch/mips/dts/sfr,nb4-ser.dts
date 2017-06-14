@@ -50,6 +50,31 @@
 	};
 };
 
+&enet0 {
+	status = "okay";
+	phy = <&enet0phy>;
+	phy-mode = "mii";
+
+	enet0phy: ethernet-phy@1 {
+		reg = <1>;
+		max-speed = <100>;
+		brcm,internal-phy;
+	};
+};
+
+&enet1 {
+	status = "okay";
+	phy = <&enet1phy>;
+	phy-mode = "mii";
+
+	enet1phy: fixed-link {
+		reg = <0>;
+		speed = <100>;
+		full-duplex;
+		pause;
+	};
+};
+
 &gpio0 {
 	status = "okay";
 };
